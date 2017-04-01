@@ -1,0 +1,9 @@
+<launch>
+
+	<include file="$(find ur_modern_driver)/launch/ur10_bringup.launch">
+		<arg name="robot_ip" value="192.168.2.12" />
+	</include>
+
+	<node pkg="ur_modern_driver" name="test_move" type="test_move.py" />	
+
+</launch>

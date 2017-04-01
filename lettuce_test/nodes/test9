@@ -1,0 +1,108 @@
+#!/usr/bin/env python
+
+import sys
+import time
+import random
+import rospy
+from std_msgs.msg import String, Bool
+from vegebot_msgs.msg import LettuceHypothesis
+from geometry_msgs.msg import Pose
+
+LETTUCE_RADIUS = 0.05
+LETTUCE_X_OFFSET = 0.7
+LETTUCE_X_SPACING = 0.3
+LETTUCE_Y_SPACING = 0.3
+LETTUCE_Z_OFFSET = LETTUCE_RADIUS
+
+Lettuce_hypothesis_topic = 0
+
+Last_snapshot = 0
+
+def set_up_lettuce_hypotheses_topic():
+	global Lettuce_hypothesis_topic
+	Lettuce_hypothesis_topic = rospy.Publisher('/vegebot/lettuce_hypotheses',
+                           LettuceHypothesis,
+                           queue_size=10)
+	return Lettuce_hypothesis_topic
+
+def set_up_take_snapshot_topic():
+    rospy.Subscriber("/vegebot/lettuce_test/take_snapshot", Bool, take_snapshot)
+
+def take_snapshot(message):
+	global Last_snapshot
+	print("Take Snapshot!!!!!")  
+	publish_reset_all()
+	if (Last_snapshot == 0):
+		print("Publishing 9 lettuces")
+		publish_9_fake_lettuces(Lettuce_hypothesis_topic)
+	elif (Last_snapshot == 1):
+		print("Publishing 3 lettuces")
+		publish_3_fake_lettuces(Lettuce_hypothesis_topic)
+	Last_snapshot = (Last_snapshot + 1) % 2			
+
+def publish_reset_all():
+	pose = Pose()
+	pose.position.x = 0
+	pose.position.y = 0
+	pose.position.z = 0	
+	hypothesis = LettuceHypothesis()
+	hypothesis.lettuce_hypothesis_id = 'N/A'
+	hypothesis.label = 'RESET_ALL'
+	hypothesis.pose = pose
+	hypothesis.radius = 0.0
+	hypothesis.probability = 0.0
+	Lettuce_hypothesis_topic.publish(hypothesis)
+
+# Sample snapshots
+
+def publish_3_fake_lettuces(lettuce_hypotheses_topic):
+	for i in range(0, 3):
+		x = LETTUCE_X_OFFSET + LETTUCE_X_SPACING * random.random()
+		y = LETTUCE_Y_SPACING * (2 - random.random() * 4)
+		z = LETTUCE_Z_OFFSET
+		hypothesis = generate_lettuce_hypothesis_at_position(i, [x, y, z])
+		lettuce_hypotheses_topic.publish(hypothesis)
+
+def publish_9_fake_lettuces(lettuce_hypotheses_topic):
+	for i in range(0, 9):
+		hypothesis = generate_lettuce_hypothesis(i)
+		lettuce_hypotheses_topic.publish(hypothesis)
+
+def generate_lettuce_hypothesis(i):		
+	x = LETTUCE_X_OFFSET + (i>4) * LETTUCE_X_SPACING
+	y = -LETTUCE_Y_SPACING*2 + LETTUCE_Y_SPACING * ((i % 5) + (i>4) * 0.5)
+	z = LETTUCE_Z_OFFSET
+	return generate_lettuce_hypothesis_at_position(i, [x, y, z])	
+
+def generate_lettuce_hypothesis_at_position(i, position):
+	pose = Pose()
+	pose.position.x = position[0]
+	pose.position.y = position[1]
+	pose.position.z = position[2]	
+	hypothesis = LettuceHypothesis()
+	hypothesis.lettuce_hypothesis_id = str(i) 
+	hypothesis.label = 'lettuce_' + hypothesis.lettuce_hypothesis_id
+	hypothesis.pose = pose
+	hypothesis.radius = 0.05
+	hypothesis.probability = 0/8
+	return hypothesis		
+
+# Main loop
+
+if __name__ == '__main__':
+    print("Publishing 9 imaginary lettuces.")
+    print("When was the last time YOU did that?")
+    lettuce_hypotheses_topic = set_up_lettuce_hypotheses_topic()
+    set_up_take_snapshot_topic()
+    rospy.init_node('lettucetest', anonymous=True)
+
+    print lettuce_hypotheses_topic
+    rate = rospy.Rate(1)
+    x = 0
+    while True:
+    	x = x + 1
+    	#sys.stdout.write('.')
+    	#sys.stdout.flush()
+    	#publish_9_fake_lettuces(lettuce_hypotheses_topic)
+    	rate.sleep()
+    print("Done.")

@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<package>
+  <name>vegebot_msgs</name>
+  <version>1.0.0</version>
+  <description>The vegebot_msgs package</description>
+  
+  <author email="simon@robotlux.com">Simon Birrell</author>
+  <maintainer email="simon@robotlux.com">Simon Birrell</maintainer>
+  
+  <license>(c) Cambridge University 2017. All Rights Reserved.</license>
+  
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>message_generation</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <run_depend>message_runtime</run_depend>
+  <run_depend>std_msgs</run_depend>
+  <run_depend>geometry_msgs</run_depend>
+  <build_depend>geometry_msgs</build_depend>
+
+  <export>
+  </export>
+</package>

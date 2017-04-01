@@ -1,0 +1,48 @@
+<launch>
+	<!-- Overall parameters -->
+	<arg name="limited" default="false"/>
+
+	<param name="/move_group/trajectory_execution/allowed_start_tolerance" value="0.0" />
+
+	<node pkg="vegebot_commander" name="vegebot_commander" type="vegebot_commander">
+	</node>
+		
+	<!-- UI infrastructure -->
+
+	<node pkg="vegebot_webserver" name="vegebot_webserver" type="vegebot_webserver.sh">	
+	</node>
+	<node pkg="joint_state_publisher" name="joint_state_publisher" type="joint_state_publisher">
+		<param name="use_gui" value="true" />
+	</node>
+	<node pkg="tf2_web_republisher" name="tf2_web_republisher" type="tf2_web_republisher">
+	</node>
+	<include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch">
+	</include>
+
+
+  	<!-- send robot urdf to param server -->
+  	<include file="$(find vegebot_run)/launch/vegebot_ur10_upload.launch">
+    	<arg name="limited" value="$(arg limited)"/>
+  	</include>
+
+  	<!-- UR10 Robot Arm -->
+	<include file="$(find ur_modern_driver)/launch/ur10_bringup.launch">
+		<arg name="limited" value="true" />
+		<arg name="robot_ip" value="192.168.2.12" />
+	</include>
+
+<!--
+	<include file="$(find vegebot_run)/launch/vegebot_ur10.launch">
+		<arg name="limited" value="true" />
+	</include>
+-->	
+
+
+	<include file="$(find vegebot_run)/launch/vegebot_moveit_planning_execution.launch">
+		<arg name="sim" value="true" />
+		<arg name="limited" value="true" />
+	</include>
+	<include file="$(find ur10_moveit_config)/launch/moveit_rviz.launch">
+		<arg name="config" value="true" />
+	</include>
+</launch>

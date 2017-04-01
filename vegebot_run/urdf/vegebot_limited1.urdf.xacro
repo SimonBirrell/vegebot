@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<robot name="vegebot" xmlns:xacro="http://ros.org/wiki/xacro">
+
+<!--
+  Author: Simon Birrell
+  BIRL Laboratory, Engineering Dept., University of Cambridge
+-->
+
+  <!-- Vegebot platform dimensions -->
+  <xacro:property name="platform_width" value="2.0" />
+  <xacro:property name="platform_height" value="0.5" />
+  <xacro:property name="platform_length" value="0.6" />
+
+  <!-- common stuff -->
+  <xacro:include filename="$(find ur_description)/urdf/common.gazebo.xacro" />
+
+  <!-- ur10 -->
+  <xacro:include filename="$(find ur_description)/urdf/ur10.urdf.xacro" />
+
+  <!-- arm -->
+  <xacro:ur10_robot prefix="" joint_limited="false"/>
+
+  <link name="world" />
+
+  <link name="platform">
+    <visual>
+      <geometry>
+        <box size="${platform_length} ${platform_width} ${platform_height}" />
+      </geometry>
+      <origin xyz="0.0 0.0 ${platform_height / 2.0}" />
+      <material name="green">
+        <color rgba="0 1 0 1" />
+      </material>
+    </visual>
+
+<!--
+    <collision>
+      <geometry>
+        <box size="${platform_length} ${platform_width} ${platform_height}" />
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" />
+    </collision>
+-->    
+  </link>
+
+  <joint name="world_joint" type="fixed">
+    <parent link="world" />
+    <child link = "platform" />
+    <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+  </joint>
+
+  <joint name="platform_arm_joint" type="fixed">
+    <parent link="platform" />
+    <child link = "base_link" />
+    <origin xyz="0.0 0.0 ${platform_height}" rpy="0.0 0.0 0.0" />
+  </joint>
+
+</robot>
