@@ -13,6 +13,11 @@
   <xacro:property name="platform_height" value="0.5" />
   <xacro:property name="platform_length" value="0.6" />
 
+  <xacro:property name="rear_platform_width" value="2.0" />
+  <xacro:property name="rear_platform_height" value="0.8" />
+  <xacro:property name="rear_platform_length" value="0.2" />
+  <xacro:property name="rear_platform_to_origin_x" value="0.2" />
+
   <xacro:property name="front_platform_to_origin_arm" value="0.1" />
   <xacro:property name="top_platform_to_origin_arm" value="0.05" />
 
@@ -61,10 +66,39 @@
 -->    
   </link>
 
+  <link name="rear_platform">
+   
+    <visual>
+      <geometry>
+        <box size="${rear_platform_length} ${rear_platform_width} ${rear_platform_height}" />
+      </geometry>
+      <origin xyz="0.0 0.0 ${rear_platform_height / 2.0}" />
+      <material name="red">
+        <color rgba="1 0 0 1" />
+      </material>
+    </visual>
+
+<!--
+    <collision>
+      <geometry>
+        <box size="${platform_length} ${platform_width} ${platform_height}" />
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" />
+    </collision>
+-->    
+  </link>
+
+
   <joint name="world_joint" type="fixed">
     <parent link="world" />
     <child link = "platform" />
     <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+  </joint>
+
+  <joint name="world_to_rear_platform_joint" type="fixed">
+    <parent link="world" />
+    <child link = "rear_platform" />
+    <origin xyz="${-(platform_length/2.0)-(rear_platform_length/2.0)} 0.0 0.0" rpy="0.0 0.0 0.0" />
   </joint>
 
   <joint name="platform_arm_joint" type="fixed">
