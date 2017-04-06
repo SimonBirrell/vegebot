@@ -6,25 +6,29 @@ from std_msgs.msg import String, Bool
 import sys
 import copy
 import moveit_commander
+from moveit_commander import MoveGroupCommander, PlanningSceneInterface, RobotCommander
 import moveit_msgs.msg
 import geometry_msgs.msg
 
 PICK_POSITION = [ 1.0, 0.0, 0.2]
-#PICK_POSITION = [ 1.3842, 0.25651, 0.56165]
 PICK_ORIENTATION = [ 0.0, 0.707106781, 0.0, 0.707106781]
-#PICK_ORIENTATION = [ 0.70711, 0.0, -0.70711, 0.0]
 
 PARK_POSITION = [ 0.38309, -0.39763, 0.93282]
 PARK_ORIENTATION = [ 0.0, 0.707106781, 0.0, 0.707106781]
-#PARK_ORIENTATION = [ 0.70591, 0.703, -0.0010698, -0.0010667]
 
-END_EFFECTOR_TO_LETTUCE_Z = 0.5
+PLACE_POSITION = [ -0.4, 0.8, 1.0]
+PLACE_ORIENTATION = [ 0.0, 0.707106781, 0.0, 0.707106781]
+
+END_EFFECTOR_TO_LETTUCE_Z = 0.0
+PREGRASP_OFFSET = [0.0, 0.0, 0.2]
 
 URF10_ORIGIN = [0.0, 0.0, 0.0]
 
+MAX_PLANNING_ATTEMPTS = 5
+
 Robot = 0
 Scene = 0
-Group = 0
+Manipulator = 0
 Display_trajectory_publisher = 0
 Snapshot_publisher = 0
 
@@ -44,7 +48,10 @@ def pick(params):
         z = float(params[3])
         position = [x, y, z]
         position = offset_end_effector_from_lettuce(position)
-        move_to(position, PICK_ORIENTATION)  
+        #move_to(position, PICK_ORIENTATION)  
+        lettuce_picked = do_pick(position)
+        if (lettuce_picked):
+            do_place()
     else:
         print("*** WARNING: Need 1+3 parameters ***")
         print("Received " + len(params))
@@ -59,11 +66,87 @@ def park(params):
     move_to(PARK_POSITION, PARK_ORIENTATION)  
     print("== Parked.")
 
+def do_pick(position):
+    print("== Moving to pregrasp position...")
+    pregrasp_position = add_vectors(position, PREGRASP_OFFSET)
+    print("////////////")
+    print(position)
+    print(pregrasp_position)
+    print("////////////")
+    move_to(pregrasp_position, PICK_ORIENTATION)
+    print("== Approach lettuce...")
+    move_to(position, PICK_ORIENTATION)
+
+    print("== Cut lettuce...")
+    print("== Retreat from lettuce...")
+    move_to(pregrasp_position, PICK_ORIENTATION)
+    print("== Detect if lettuce is in the bucket ==")
+    return True
+
+def do_place():
+    print("== Moving end effector to place position...")
+    move_to(PLACE_POSITION, PLACE_ORIENTATION)
+    print("== Release lettuce...")
+
+def subtract_vectors(vector1, vector2):
+    vector3 = [0.0, 0.0, 0.0]
+    for i in range(0,len(vector1)):
+        vector3[i] = vector1[i] - vector2[i]
+    return vector3        
+
+def add_vectors(vector1, vector2):
+    vector3 = [0.0, 0.0, 0.0]
+    for i in range(0,len(vector1)):
+        vector3[i] = vector1[i] + vector2[i]
+    return vector3        
+
 def move_to(position, orientation):
+    global Manipulator
+
     print("Moving...")
-    print "== Printing robot state"
+    print "== Setting target"
+    pose_target = new_pose(position, orientation)
+    Manipulator.set_pose_target(pose_target)
     #print Robot.get_current_state()
-    print "== Generating plan"
+
+    print("== Devising plan")
+    attempts = 0
+    trajectory = None
+    while (attempts < MAX_PLANNING_ATTEMPTS):
+        print "Planning attempt %s" % attempts
+        trajectory = Manipulator.plan()
+        print trajectory
+        if (plan_has_succeeded(trajectory)):
+            break
+        attempts = attempts + 1    
+    if (not plan_has_succeeded(trajectory)):
+        print("********* Could not find plan after %s attempts ********" % attempts)
+        return False
+
+    print "== Visualizing plan"
+    #visualize_plan(plan)
+
+    print("== Moving to target pose...")
+    #result = Manipulator.go(wait=True)
+    result = Manipulator.execute(trajectory)
+    print("----------------------------")
+    print result
+    print("----------------------------")
+    # This following get_current_state() call appears to be necessary to normalize 
+    # joint angles
+    #print Robot.get_current_state()
+    rospy.loginfo("== Move complete!")
+    return True
+
+def plan_has_succeeded(trajectory):
+    if (trajectory==None):
+        return False
+    if (len(trajectory.joint_trajectory.points)==0):
+        return False
+    return True        
+
+
+def new_pose(position, orientation):
     pose_target = geometry_msgs.msg.Pose()
     pose_target.orientation.x = orientation[0] #0.0
     pose_target.orientation.y = orientation[1] # 0.0
@@ -72,33 +155,25 @@ def move_to(position, orientation):
     pose_target.position.x = position[0] + URF10_ORIGIN[0]
     pose_target.position.y = position[1] + URF10_ORIGIN[1]
     pose_target.position.z = position[2] + URF10_ORIGIN[2]
-    print("== Setting plan")
-    Group.set_pose_target(pose_target)
-    #print Robot.get_current_state()
-    plan1 = Group.plan()
-    print "== Visualizing plan"
+    return pose_target
+
+def visualize_plan(plan):
     display_trajectory = moveit_msgs.msg.DisplayTrajectory()
     display_trajectory.trajectory_start = Robot.get_current_state()
-    display_trajectory.trajectory.append(plan1)
-    Display_trajectory_publisher.publish(display_trajectory);
-    print("== Moving to target pose...")
-    Group.go(wait=True)
-    # This following get_current_state() call appears to be necessary to normalize 
-    # joint angles
-    #print Robot.get_current_state()
-    rospy.loginfo("== Move complete!")
+    display_trajectory.trajectory.append(plan)
+    Display_trajectory_publisher.publish(display_trajectory)
 
 def start_moveit():
-    global Robot, Scene, Group, Display_trajectory_publisher
+    global Robot, Scene, Manipulator, Display_trajectory_publisher
 
     print("== Setting up MoveIt!")
     moveit_commander.roscpp_initialize(sys.argv)
-    #rospy.init_node('move_group_python_interface_tutorial', anonymous=True)    
-    Robot = moveit_commander.RobotCommander() 
+    Robot = RobotCommander() 
     print("== Getting Robot Groups")
     print(Robot.get_group_names())
-    Scene = moveit_commander.PlanningSceneInterface()
-    Group = moveit_commander.MoveGroupCommander("manipulator")
+    Scene = PlanningSceneInterface()
+    Manipulator = MoveGroupCommander("manipulator")
+    Manipulator.allow_replanning(True)
     Display_trajectory_publisher = rospy.Publisher(
                                     '/move_group/display_planned_path',
                                     moveit_msgs.msg.DisplayTrajectory,
