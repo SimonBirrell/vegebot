@@ -10,17 +10,17 @@ from moveit_commander import MoveGroupCommander, PlanningSceneInterface, RobotCo
 import moveit_msgs.msg
 import geometry_msgs.msg
 
-PICK_POSITION = [ 1.0, 0.0, 0.2]
+PICK_POSITION = [ 1.0, 0.0, 0.5]
 PICK_ORIENTATION = [ 0.0, 0.707106781, 0.0, 0.707106781]
 
 PARK_POSITION = [ 0.38309, -0.39763, 0.93282]
 PARK_ORIENTATION = [ 0.0, 0.707106781, 0.0, 0.707106781]
 
-PLACE_POSITION = [ -0.4, 0.8, 1.0]
+PLACE_POSITION = [ -0.3, 0.8, 1.2]
 PLACE_ORIENTATION = [ 0.0, 0.707106781, 0.0, 0.707106781]
 
-END_EFFECTOR_TO_LETTUCE_Z = 0.0
-PREGRASP_OFFSET = [0.0, 0.0, 0.2]
+END_EFFECTOR_TO_LETTUCE_Z = 0.15
+PREGRASP_OFFSET = [0.0, 0.0, 0.3]
 
 URF10_ORIGIN = [0.0, 0.0, 0.0]
 

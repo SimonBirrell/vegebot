@@ -10,16 +10,16 @@
   <xacro:property name="floor_thickness" value="0.05" />
 
   <xacro:property name="platform_width" value="2.0" />
-  <xacro:property name="platform_height" value="0.5" />
+  <xacro:property name="platform_height" value="0.58" />
   <xacro:property name="platform_length" value="0.6" />
 
   <xacro:property name="rear_platform_width" value="2.0" />
-  <xacro:property name="rear_platform_height" value="0.8" />
+  <xacro:property name="rear_platform_height" value="1.0" />
   <xacro:property name="rear_platform_length" value="0.2" />
   <xacro:property name="rear_platform_to_origin_x" value="0.2" />
 
   <xacro:property name="front_platform_to_origin_arm" value="0.1" />
-  <xacro:property name="top_platform_to_origin_arm" value="0.05" />
+  <xacro:property name="top_platform_to_origin_arm" value="0.0" />
 
 
   <!-- common stuff -->
