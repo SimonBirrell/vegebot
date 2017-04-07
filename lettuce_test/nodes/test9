@@ -26,12 +26,22 @@ def set_up_lettuce_hypotheses_topic():
 	return Lettuce_hypothesis_topic
 
 def set_up_take_snapshot_topic():
-    rospy.Subscriber("/vegebot/lettuce_test/take_snapshot", Bool, take_snapshot)
+    rospy.Subscriber("/vegebot/lettuce_test/take_snapshot", String, take_snapshot)
 
 def take_snapshot(message):
-	global Last_snapshot
+	command = message.data
 	print("Take Snapshot!!!!!")  
 	publish_reset_all()
+	if (command == "fake_lettuces"):
+		publish_fake_lettuces()
+	elif (command == "fake_image"):
+		publish_fake_image()
+
+def publish_fake_image():
+	print("Publishing fake image !!!!")		
+
+def publish_fake_lettuces():	
+	global Last_snapshot
 	if (Last_snapshot == 0):
 		print("Publishing 9 lettuces")
 		publish_9_fake_lettuces(Lettuce_hypothesis_topic)

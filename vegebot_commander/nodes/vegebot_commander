@@ -19,6 +19,9 @@ PARK_ORIENTATION = [ 0.0, 0.707106781, 0.0, 0.707106781]
 PLACE_POSITION = [ -0.3, 0.8, 1.2]
 PLACE_ORIENTATION = [ 0.0, 0.707106781, 0.0, 0.707106781]
 
+SCAN_POSITION = [ 1.0, 0.0, 0.5]
+SCAN_ORIENTATION= [ 0.0, 0.707106781, 0.0, 0.707106781]
+
 END_EFFECTOR_TO_LETTUCE_Z = 0.15
 PREGRASP_OFFSET = [0.0, 0.0, 0.3]
 
@@ -189,11 +192,20 @@ def detect(params):
     print("Detecting lettuces...")
     # This is a dummy snapshot
     take_snapshot()
-    # Determine snapshot
+
+def detect_image(params):
+    print("Moving to camera position...")
+    move_to(SCAN_POSITION, SCAN_ORIENTATION)  
+    print("Generating fake image...")
+    trigger_fake_image_snapshot()
+
+def trigger_fake_image_snapshot():
+    print("Triggering fake image snapshot...")
+    Snapshot_publisher.publish('fake_image')
 
 def take_snapshot():
     print("Taking snapshot...")
-    Snapshot_publisher.publish(True)
+    Snapshot_publisher.publish('fake_lettuces')
 
 # Communications        
     
@@ -223,11 +235,13 @@ def callback(data):
         pick(params) 
     elif (params[0]=='detect'):
         detect(params) 
+    elif (params[0]=='detect_image'):
+        detect_image(params) 
 
 def prepare_snapshot_publisher():
     global Snapshot_publisher 
     Snapshot_publisher = rospy.Publisher('/vegebot/lettuce_test/take_snapshot',
-                                            Bool,
+                                            String,
                                             queue_size=10)
 
 # Main Loop of module
