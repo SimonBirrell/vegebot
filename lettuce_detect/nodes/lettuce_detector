@@ -20,25 +20,87 @@ LETTUCE_Y_SPACING = 0.3
 LETTUCE_Z_OFFSET = LETTUCE_RADIUS
 
 LETTUCE_IMAGE_TOPIC_NAME = '/vegebot/lettuce_video/raw_images'
+LETTUCE_HYPOTHESIS_TOPIC_NAME = '/vegebot/lettuce_hypotheses'
+LETTUCE_ANNOTATED_IMAGES_TOPIC_NAME = '/vegebot/lettuce_hypotheses/annotated_images'
+
 LETTUCE_IMAGE_TEST_FILE = '/home/simonbirrell/catkin_ws/src/vegebot/lettuce_test/nodes/lettuce_test.jpg'
 
-Lettuce_hypothesis_topic = 0
+Lettuce_hypothesis_topic = None
 Lettuce_images_raw_topic = None
+Lettuce_images_annotated_topic = None
 
 Last_snapshot = 0
 OpenCVBridge = 0
 
-########################### Imagery ############################################
+########################### ROS Stuff ############################################
+
+def subscribe_to_lettuce_images_raw_topic(callback):
+    global Lettuce_images_raw_topic   
+    Lettuce_images_raw_topic = rospy.Subscriber(LETTUCE_IMAGE_TOPIC_NAME,
+                           Image,
+                           callback)
+
+def process_incoming_image(message):
+    print("Received image for detection!")
+    image = message
+    cv2_image = image_message_to_cv2_image(image)
+    hypotheses_2D = detect_lettuce_hypotheses_2D(cv2_image)
+    annotated_cv2_image = annotate_image(cv2_image, hypotheses_2D)
+    publish_annotated_image(annotated_cv2_image)
+    for hypothesis_2D in range(0, len(hypotheses_2D)):
+        lettuce_hypothesis_message = transform_2D_hypothesis_to_3D(hypothesis_2D)
+        Lettuce_hypothesis_topic.publish()
+    print("Lettuce detector has processed an image!")    
+
+def set_up_lettuce_hypotheses_topic():
+    global Lettuce_hypothesis_topic
+    Lettuce_hypothesis_topic = rospy.Publisher(LETTUCE_HYPOTHESIS_TOPIC_NAME,
+                           LettuceHypothesis,
+                           queue_size=10)
+    return Lettuce_hypothesis_topic
+
+def set_up_lettuce_images_annotated_topic():
+    global Lettuce_images_annotated_topic
+    Lettuce_images_annotated_topic = rospy.Publisher(LETTUCE_ANNOTATED_IMAGES_TOPIC_NAME,
+                           Image,
+                           queue_size=10)
+    return Lettuce_images_annotated_topic
+
+def publish_annotated_image(annotated_image):
+    global Lettuce_images_annotated_topic
+    annotated_image_message = image_to_image_message(annotated_image)
+    Lettuce_images_annotated_topic.publish(annotated_image_message)
+
+
+##################################################################################
+
+########################### Imagery ##############################################
 
 def set_up_opencv():
 	global OpenCVBridge
 	OpenCVBridge = CvBridge()
 
+def detect_lettuce_hypotheses_2D(image):
+    return []
+
+def annotate_image(image, hypotheses):
+    return image
+
+def transform_2D_hypothesis_to_3D(hypothesis_2D):
+    return None        
+ 
+def image_to_image_message(image):
+    return OpenCVBridge.cv2_to_imgmsg(image)
+
+def image_message_to_cv2_image(image):
+    return OpenCVBridge.imgmsg_to_cv2(image)
+
+##################################################################################
 
 if __name__ == '__main__':
     print("Launching lettuce detector...")
     set_up_opencv()
-    set_up_lettuce_images_raw_topic()
+    subscribe_to_lettuce_images_raw_topic(process_incoming_image)
     set_up_lettuce_hypotheses_topic()
     set_up_lettuce_images_annotated_topic()
     rospy.init_node(NODE_NAME, anonymous=True)
