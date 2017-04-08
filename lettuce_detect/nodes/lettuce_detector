@@ -1,0 +1,50 @@
+#!/usr/bin/env python
+
+import sys
+import time
+import random
+import rospy
+import cv2
+from std_msgs.msg import String, Bool
+from vegebot_msgs.msg import LettuceHypothesis
+from geometry_msgs.msg import Pose
+from sensor_msgs.msg import Image, CompressedImage
+from cv_bridge import CvBridge, CvBridgeError
+
+NODE_NAME = 'lettuce_detector'
+
+LETTUCE_RADIUS = 0.05
+LETTUCE_X_OFFSET = 0.7
+LETTUCE_X_SPACING = 0.3
+LETTUCE_Y_SPACING = 0.3
+LETTUCE_Z_OFFSET = LETTUCE_RADIUS
+
+LETTUCE_IMAGE_TOPIC_NAME = '/vegebot/lettuce_video/raw_images'
+LETTUCE_IMAGE_TEST_FILE = '/home/simonbirrell/catkin_ws/src/vegebot/lettuce_test/nodes/lettuce_test.jpg'
+
+Lettuce_hypothesis_topic = 0
+Lettuce_images_raw_topic = None
+
+Last_snapshot = 0
+OpenCVBridge = 0
+
+########################### Imagery ############################################
+
+def set_up_opencv():
+	global OpenCVBridge
+	OpenCVBridge = CvBridge()
+
+
+if __name__ == '__main__':
+    print("Launching lettuce detector...")
+    set_up_opencv()
+    set_up_lettuce_images_raw_topic()
+    set_up_lettuce_hypotheses_topic()
+    set_up_lettuce_images_annotated_topic()
+    rospy.init_node(NODE_NAME, anonymous=True)
+
+    try:
+        rospy.spin()
+    except KeyboardInterrupt:
+        print "Shutting down lettuce detector"
+    cv2.destroyAllWindows()

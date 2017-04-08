@@ -22,7 +22,7 @@ Publisher = None
 def detect_lettuce():
 	# Webcam 0 is Logitech 1 iSight
 	#cap = cv2.VideoCapture(0)
-	cap = cv2.VideoCapture('/home/simonbirrell/catkin_ws/src/lettuce_prey/nodes/lettuces.mp4')
+	cap = cv2.VideoCapture('/home/simonbirrell/catkin_ws/src/vegebot/lettuce_prey/nodes/lettuces.mp4')
 	global Publisher
 	Publisher = rospy.Publisher('lettuce_target', Pose, queue_size=10)
 	rospy.init_node('lettuce_prey', anonymous=True)
@@ -105,7 +105,7 @@ def lettuce_already_attempted(lettuce, attempted_lettuces):
 	return False
 
 def scan_video(cap):
-	lettuce_cascade = cv2.CascadeClassifier('/home/simonbirrell/catkin_ws/src/lettuce_prey/nodes/data/cascade.xml')
+	lettuce_cascade = cv2.CascadeClassifier('/home/simonbirrell/catkin_ws/src/vegebot/lettuce_prey/nodes/data/cascade.xml')
 
 	while 1:
 	    ret, img = cap.read()

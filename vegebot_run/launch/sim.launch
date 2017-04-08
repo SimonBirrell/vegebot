@@ -5,7 +5,7 @@
 	<node pkg="vegebot_commander" name="vegebot_commander" type="vegebot_commander" output="screen">
 	</node>
 
-	<node pkg="lettuce_test" name="test9" type="test9">
+	<node pkg="lettuce_test" name="test" type="test">
 	</node>
 
 	<!-- UI infrastructure -->

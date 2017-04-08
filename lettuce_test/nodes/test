@@ -4,9 +4,12 @@ import sys
 import time
 import random
 import rospy
+import cv2
 from std_msgs.msg import String, Bool
 from vegebot_msgs.msg import LettuceHypothesis
 from geometry_msgs.msg import Pose
+from sensor_msgs.msg import Image, CompressedImage
+from cv_bridge import CvBridge, CvBridgeError
 
 LETTUCE_RADIUS = 0.05
 LETTUCE_X_OFFSET = 0.7
@@ -14,9 +17,37 @@ LETTUCE_X_SPACING = 0.3
 LETTUCE_Y_SPACING = 0.3
 LETTUCE_Z_OFFSET = LETTUCE_RADIUS
 
+LETTUCE_IMAGE_TOPIC_NAME = '/vegebot/lettuce_video/raw_images'
+LETTUCE_IMAGE_TEST_FILE = '/home/simonbirrell/catkin_ws/src/vegebot/lettuce_test/nodes/lettuce_test.jpg'
+
 Lettuce_hypothesis_topic = 0
+Lettuce_images_raw_topic = None
 
 Last_snapshot = 0
+OpenCVBridge = 0
+
+########################### Imagery ############################################
+
+def set_up_opencv():
+	global OpenCVBridge
+	OpenCVBridge = CvBridge()
+
+def set_up_lettuce_images_raw_topic():
+	global Lettuce_images_raw_topic
+	Lettuce_images_raw_topic = rospy.Publisher(LETTUCE_IMAGE_TOPIC_NAME,
+                           Image,
+                           queue_size=10)
+	return Lettuce_images_raw_topic
+
+def publish_jpeg_from_file(topic_name, filename):
+	global OpenCVBridge
+
+	image = cv2.imread(filename)
+	image_message = OpenCVBridge.cv2_to_imgmsg(image)
+	Lettuce_images_raw_topic.publish(image_message)
+	print("Image published!")
+
+################################################################################
 
 def set_up_lettuce_hypotheses_topic():
 	global Lettuce_hypothesis_topic
@@ -38,7 +69,8 @@ def take_snapshot(message):
 		publish_fake_image()
 
 def publish_fake_image():
-	print("Publishing fake image !!!!")		
+	print("Publishing fake image !!!!")
+	publish_jpeg_from_file(LETTUCE_IMAGE_TOPIC_NAME, LETTUCE_IMAGE_TEST_FILE)	
 
 def publish_fake_lettuces():	
 	global Last_snapshot
@@ -102,7 +134,9 @@ def generate_lettuce_hypothesis_at_position(i, position):
 if __name__ == '__main__':
     print("Publishing 9 imaginary lettuces.")
     print("When was the last time YOU did that?")
+    set_up_opencv()
     lettuce_hypotheses_topic = set_up_lettuce_hypotheses_topic()
+    lettuce_images_raw_topic = set_up_lettuce_images_raw_topic()
     set_up_take_snapshot_topic()
     rospy.init_node('lettucetest', anonymous=True)
 
