@@ -21,6 +21,8 @@
   <xacro:property name="front_platform_to_origin_arm" value="0.1" />
   <xacro:property name="top_platform_to_origin_arm" value="0.0" />
 
+  <xacro:property name="ee_camera_offset_x" value="0.1" />
+  <xacro:property name="camera_size" value="0.05" />
 
   <!-- common stuff -->
   <xacro:include filename="$(find ur_description)/urdf/common.gazebo.xacro" />
@@ -88,6 +90,17 @@
 -->    
   </link>
 
+  <link name="camera_link">
+    <visual>
+      <geometry>
+        <box size="${camera_size} ${camera_size} ${camera_size}" />
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" />
+      <material name="red">
+         <color rgba="1 0 0 1" />
+      </material>
+    </visual>
+  </link>
 
   <joint name="world_joint" type="fixed">
     <parent link="world" />
@@ -105,6 +118,12 @@
     <parent link="platform" />
     <child link = "base_link" />
     <origin xyz="${(platform_length/2.0) - front_platform_to_origin_arm} 0.0 ${platform_height + top_platform_to_origin_arm}" rpy="0.0 0.0 0.0" />
+  </joint>
+
+  <joint name="end_effector_joint" type="fixed">
+    <parent link="ee_link" />
+    <child link = "camera_link" />
+    <origin xyz="${ee_camera_offset_x} 0.0 0.0" rpy="0.0 0.0 0.0" />
   </joint>
 
 </robot>

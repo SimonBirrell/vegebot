@@ -2,12 +2,15 @@
 
 import sys
 import time
+import math
 import random
 import rospy
 import cv2
+import tf2_ros
+import tf2_geometry_msgs
 from std_msgs.msg import String, Bool
 from vegebot_msgs.msg import LettuceHypothesis
-from geometry_msgs.msg import Pose
+from geometry_msgs.msg import Pose, Point, PointStamped
 from sensor_msgs.msg import Image, CompressedImage
 from cv_bridge import CvBridge, CvBridgeError
 
@@ -26,6 +29,16 @@ LETTUCE_ANNOTATED_IMAGES_TOPIC_NAME = '/vegebot/lettuce_hypotheses/annotated_ima
 LETTUCE_IMAGE_TEST_FILE = '/home/simonbirrell/catkin_ws/src/vegebot/lettuce_test/nodes/lettuce_test.jpg'
 LETTUCE_CASCADE_FILE = '/home/simonbirrell/catkin_ws/src/vegebot/lettuce_detect/cascade_data/cascade.xml' 
 
+DEFAULT_FAKE_PROBABILITY = 0.8
+DEFAULT_FAKE_LABEL = 'healthy'
+
+# Use degrees as more intuitive
+FIELD_HEIGHT_ANGLE = 80
+FIELD_WIDTH_ANGLE = 60
+# 
+FIELD_PIXEL_WIDTH = 0
+FIELD_PIXEL_HEIGHT = 0
+
 Lettuce_hypothesis_topic = None
 Lettuce_images_raw_topic = None
 Lettuce_images_annotated_topic = None
@@ -36,6 +49,8 @@ Last_lettuce_id = 0
 Last_snapshot = 0
 OpenCVBridge = 0
 
+TfBuffer = None
+
 ########################### ROS Stuff ############################################
 
 def subscribe_to_lettuce_images_raw_topic(callback):
@@ -45,16 +60,22 @@ def subscribe_to_lettuce_images_raw_topic(callback):
                            callback)
 
 def process_incoming_image(message):
+    global FIELD_PIXEL_WIDTH, FIELD_PIXEL_HEIGHT
     print("Received image for detection!")
     image = message
     cv2_image = image_message_to_cv2_image(image)
-    hypotheses_2D = detect_lettuce_hypotheses_2D(cv2_image)
-    annotated_cv2_image = annotate_image(cv2_image, hypotheses_2D)
+    height, width, channels = cv2_image.shape
+    FIELD_PIXEL_WIDTH = width
+    FIELD_PIXEL_HEIGHT = height
+    hypotheses = detect_lettuce_hypotheses_2D(cv2_image)
+    annotated_cv2_image = annotate_image(cv2_image, hypotheses)
     publish_annotated_image(annotated_cv2_image)
     publish_camera_projection()
-    for hypothesis_2D in range(0, len(hypotheses_2D)):
-        lettuce_hypothesis_message = transform_2D_hypothesis_to_3D(hypothesis_2D)
-        Lettuce_hypothesis_topic.publish()
+    for hypothesis in hypotheses:
+        #lettuce_hypothesis_message = transform_2D_hypothesis_to_3D(hypothesis)
+        #Lettuce_hypothesis_topic.publish(lettuce_hypothesis_message)
+        hypothesis.publish()
+        print("Publish lettuce hypothesis")
     print("Lettuce detector has processed an image!")    
 
 def set_up_lettuce_hypotheses_topic():
@@ -75,6 +96,23 @@ def publish_annotated_image(annotated_image):
     global Lettuce_images_annotated_topic
     annotated_image_message = image_to_image_message(annotated_image)
     Lettuce_images_annotated_topic.publish(annotated_image_message)
+
+def subscribe_to_transforms():
+    global TfBuffer
+
+    TfBuffer = tf2_ros.Buffer()
+    listener = tf2_ros.TransformListener(TfBuffer)
+
+def get_camera_to_world_transform():
+    if TfBuffer==None:
+        return None
+    try:
+        #trans = TfBuffer.lookup_transform('camera_link', 'world', rospy.Time())
+        trans = TfBuffer.lookup_transform('world', 'camera_link', rospy.Time())
+    except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
+        print("*** WARNING: Transform buffer in lettuce_detector not ready ***")
+        return None
+    return trans    
 
 
 ##################################################################################
@@ -101,34 +139,42 @@ def detect_lettuce_hypotheses_2D(image):
                                                 minSize=(150,150), maxSize=(250,250))
 
     lettuces = map(bounding_box_to_hypothesis, lettuces)
-    print("=================================")
-    print lettuces
-    print("=================================")
+    # print("=================================")
+    # print lettuces
+    # print("=================================")
     # for (x,y,w,h) in lettuces:
     #     cv2.rectangle(img,(x,y),(x+w,y+h),(255,0,0),2)
 
     return lettuces
 
+
 def bounding_box_to_hypothesis(bounding_box):
-    global Last_lettuce_id
-    Last_lettuce_id = Last_lettuce_id + 1
-    return [str(Last_lettuce_id), bounding_box, 'healthy', 0.8]    
+    # global Last_lettuce_id
+    # Last_lettuce_id = Last_lettuce_id + 1
+    # return [str(Last_lettuce_id), bounding_box, 'healthy', 0.8]    
+    return LettuceHypothesisComplete(bounding_box, DEFAULT_FAKE_LABEL, DEFAULT_FAKE_PROBABILITY)
 
 def annotate_image(image, hypotheses):
     for hypothesis_2D in hypotheses:
-        lettuce_id = hypothesis_2D[0]
-        x = hypothesis_2D[1][0]
-        y = hypothesis_2D[1][1]
-        w = hypothesis_2D[1][2]
-        h = hypothesis_2D[1][3]
-        # To do: show ID, label and probability
-        label = hypothesis_2D[1]
-        probability = hypothesis_2D[2]
+        # lettuce_id = hypothesis_2D[0]
+        # x = hypothesis_2D[1][0]
+        # y = hypothesis_2D[1][1]
+        # w = hypothesis_2D[1][2]
+        # h = hypothesis_2D[1][3]
+        # # To do: show ID, label and probability
+        # label = hypothesis_2D[1]
+        # probability = hypothesis_2D[2]
         rgb_color = (255,0,0)
+        x = hypothesis_2D.x2D()
+        y = hypothesis_2D.y2D()
+        w = hypothesis_2D.w2D()
+        h = hypothesis_2D.h2D()
+
         cv2.rectangle(image,(x,y),(x+w,y+h),rgb_color,2)
     return image
 
 def transform_2D_hypothesis_to_3D(hypothesis_2D):
+    #x3D = point_2D_to_point_3D()
     return None        
  
 def image_to_image_message(image):
@@ -138,17 +184,143 @@ def image_message_to_cv2_image(image):
     return OpenCVBridge.imgmsg_to_cv2(image)
 
 def publish_camera_projection():
-    pass    
+    pass   
+
+##################################################################################
+
+########################### LettuceHypothesisComplete ############################
+
+class LettuceHypothesisComplete:
+    def __init__(self, bounding_box, label=DEFAULT_FAKE_LABEL, probability=DEFAULT_FAKE_PROBABILITY):
+        global Last_lettuce_id
+        self.bounding_box = bounding_box
+        self.label = label
+        self.probability = probability
+        Last_lettuce_id = Last_lettuce_id + 1
+        self.lettuce_id = Last_lettuce_id
+        self.calculate_3D_position()
+
+    def lettuce_id(self):
+        return self.lettuce_id    
+
+    def x2D(self):
+        return self.bounding_box[0]
+
+    def y2D(self):
+        return self.bounding_box[1]
+
+    def w2D(self):
+        return self.bounding_box[2]
+
+    def h2D(self):
+        return self.bounding_box[3]
+
+    def label(self):
+        return self.label
+
+    def probability(self):
+        return self.probability
+
+    def calculate_3D_position(self):
+        if not hasattr(self, 'lettuce_id'):
+            print("*** WARNING: LettuceHypothesis not properly created ****")             
+        # print("Calculating 3D position")
+        centre_x = self.x2D() + self.w2D() / 2
+        centry_y = self.y2D() + self.h2D() / 2
+        self.radius3D = points2D_to_distance3D(self.x2D(), self.y2D(), 
+                                               self.x2D()+self.w2D(), 
+                                               self.y2D()+self.h2D()) / 2.0
+        self.centre3D = point_2D_to_point_3D(self.x2D(), self.y2D())
+        self.centre3D.point.z = self.centre3D.point.z + self.radius3D
+
+    def radius3D(self):
+        return self.radius3D
+
+    def centre3D(self):
+        return self.centre3D    
+
+    def publish(self):
+        global lettuce_hypothesis_topic
+        lettuce_hypothesis_message = LettuceHypothesis()
+        pose = Pose()
+        pose.position.x = self.centre3D.point.x
+        pose.position.y = self.centre3D.point.y
+        pose.position.z = self.centre3D.point.z
+        lettuce_id = str(self.lettuce_id)
+        lettuce_hypothesis_message.lettuce_hypothesis_id = lettuce_id
+        lettuce_hypothesis_message.label = 'lettuce_' + lettuce_id
+        lettuce_hypothesis_message.pose = pose
+        lettuce_hypothesis_message.radius = self.radius3D
+        lettuce_hypothesis_message.probability = DEFAULT_FAKE_PROBABILITY
+
+        Lettuce_hypothesis_topic.publish(lettuce_hypothesis_message)
+            
+
+##################################################################################
+
+########################### 3D Geometry ##########################################
+
+def point_2D_to_point_3D(x,y):
+    camera_transform = get_camera_to_world_transform()
+    distance_to_floor = camera_transform.transform.translation.z
+    field_width = 2.0 * distance_to_floor * math.tan(math.radians(FIELD_WIDTH_ANGLE) / 2.0)
+    half_field_width = field_width / 2.0
+    field_height = 2.0 * distance_to_floor * math.tan(math.radians(FIELD_HEIGHT_ANGLE) / 2.0)
+    half_field_height = field_height / 2.0
+
+    # x,y relative to top left of camera field
+    x3D = distance_to_floor
+    y3D = half_field_width - (field_width * x / FIELD_PIXEL_WIDTH)
+    z3D = half_field_height - (field_width * y / FIELD_PIXEL_HEIGHT)
+
+    point_in_world = transformed_point(x3D, y3D, z3D, camera_transform)
+    return point_in_world
+
+def camera_field_polygon_in_world():
+    camera_transform = get_camera_to_world_transform()
+    distance_to_floor = 0 - camera_transform.transform.translation.z
+    field_width = 2.0 * distance_to_floor * math.tan(math.radians(FIELD_WIDTH_ANGLE) / 2.0)
+    half_field_width = field_width / 2.0
+    field_height = 2.0 * distance_to_floor * math.tan(math.radians(FIELD_HEIGHT_ANGLE) / 2.0)
+    half_field_height = field_height / 2.0
+
+    top_left_world = transformed_point(distance_to_floor, half_field_width, half_field_height, camera_transform)
+    top_right_world = transformed_point(distance_to_floor, -half_field_width, half_field_height, camera_transform)
+    bottom_left_world = transformed_point(distance_to_floor, half_field_width, -half_field_height, camera_transform)
+    top_left_world = transformed_point(distance_to_floor, -half_field_width, -half_field_height, camera_transform)
+    return
+
+
+def transformed_point(x, y, z, transform):
+    point = PointStamped()
+    point.header.stamp = rospy.Time.now()
+    point.header.frame_id = 'camera_link'
+    point.point.x = x
+    point.point.y = y 
+    point.point.z = z
+    point_in_world = tf2_geometry_msgs.do_transform_point(point, transform)
+    return point_in_world
+
+def points2D_to_distance3D(x1,y1,x2,y2):
+    point1 = point_2D_to_point_3D(x1, y1)
+    point2 = point_2D_to_point_3D(x2, y2)
+
+    distance = math.sqrt((point1.point.x - point2.point.x)**2 + 
+                         (point1.point.y - point2.point.y)**2 + 
+                         (point1.point.z - point2.point.z)**2)
+    return distance    
+
 
 ##################################################################################
 
 if __name__ == '__main__':
     print("Launching lettuce detector...")
+    rospy.init_node(NODE_NAME, anonymous=True)
+    subscribe_to_transforms()
     set_up_opencv()
-    subscribe_to_lettuce_images_raw_topic(process_incoming_image)
     set_up_lettuce_hypotheses_topic()
     set_up_lettuce_images_annotated_topic()
-    rospy.init_node(NODE_NAME, anonymous=True)
+    subscribe_to_lettuce_images_raw_topic(process_incoming_image)
 
     try:
         rospy.spin()
