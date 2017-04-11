@@ -9,20 +9,60 @@
   <!-- Vegebot platform dimensions -->
   <xacro:property name="floor_thickness" value="0.05" />
 
-  <xacro:property name="platform_width" value="2.0" />
+  <xacro:property name="platform_width" value="2.12" />
   <xacro:property name="platform_height" value="0.58" />
-  <xacro:property name="platform_length" value="0.6" />
+  <xacro:property name="platform_length" value="0.32" />
+  <xacro:property name="platform_depth" value="0.10" />
 
-  <xacro:property name="rear_platform_width" value="2.0" />
-  <xacro:property name="rear_platform_height" value="1.0" />
-  <xacro:property name="rear_platform_length" value="0.2" />
+  <xacro:property name="rear_platform_width" value="2.12" />
+  <xacro:property name="rear_platform_height" value="0.50" />
+  <xacro:property name="rear_platform_length" value="0.39" />
+  <xacro:property name="rear_platform_depth" value="0.02" />
   <xacro:property name="rear_platform_to_origin_x" value="0.2" />
 
-  <xacro:property name="front_platform_to_origin_arm" value="0.1" />
+  <xacro:property name="wheel_mount_width" value="0.20" />
+  <xacro:property name="wheel_mount_depth" value="0.35" />
+  <xacro:property name="wheel_mount_length" value="0.35" />
+  <xacro:property name="wheel_mount_height" value="0.40" />
+  <xacro:property name="wheel_mount_offset_x" value="0.04" />  
+  <xacro:property name="wheel_offset_x" value="0.155" />
+  <xacro:property name="wheel_offset_z" value="-0.135" />
+  <xacro:property name="wheel_length" value="0.10" />
+  <xacro:property name="wheel_radius" value="0.20" />
+
+  <xacro:property name="front_platform_to_origin_arm" value="0.16" />
   <xacro:property name="top_platform_to_origin_arm" value="0.0" />
 
   <xacro:property name="ee_camera_offset_x" value="0.1" />
   <xacro:property name="camera_size" value="0.05" />
+
+  <xacro:macro name="wheel_assembly">
+    <visual>
+      <geometry>
+        <box size="${wheel_mount_length} ${wheel_mount_width} ${wheel_mount_depth}" />
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" />
+      <material name="grey">
+        <color rgba="0.8 0.8 0.8 1" />
+      </material>
+    </visual>
+    <visual>
+      <geometry>
+        <cylinder length="${wheel_length}" radius="${wheel_radius}">
+        </cylinder>
+        <origin xyz="${wheel_offset_x} 0.0 ${wheel_offset_z}" rpy="1.57075 0.0 0.0" />
+        <material name="dark_grey">
+          <color rgba="0.2 0.2 0.2 1" />
+        </material>
+      </geometry>
+    </visual>
+  </xacro:macro>
+
+  <xacro:macro name="plywood_material">
+      <material name="brown">
+        <color rgba="0.89 0.7565 0.445 1" />
+      </material>
+  </xacro:macro>
 
   <!-- common stuff -->
   <xacro:include filename="$(find ur_description)/urdf/common.gazebo.xacro" />
@@ -50,12 +90,10 @@
    
     <visual>
       <geometry>
-        <box size="${platform_length} ${platform_width} ${platform_height}" />
+        <box size="${platform_length} ${platform_width} ${platform_depth}" />
       </geometry>
-      <origin xyz="0.0 0.0 ${platform_height / 2.0}" />
-      <material name="green">
-        <color rgba="0 1 0 1" />
-      </material>
+      <origin xyz="0.0 0.0 ${platform_height - platform_depth / 2.0}" />
+      <xacro:plywood_material />
     </visual>
 
 <!--
@@ -68,16 +106,30 @@
 -->    
   </link>
 
+  <link name="wheel_mount_front_right">
+    <xacro:wheel_assembly />
+  </link>
+
+  <link name="wheel_mount_front_left">
+    <xacro:wheel_assembly />
+  </link>
+
+  <link name="wheel_mount_back_right">
+    <xacro:wheel_assembly />
+  </link>
+
+  <link name="wheel_mount_back_left">
+    <xacro:wheel_assembly />
+  </link>
+
   <link name="rear_platform">
    
     <visual>
       <geometry>
-        <box size="${rear_platform_length} ${rear_platform_width} ${rear_platform_height}" />
+        <box size="${rear_platform_length} ${rear_platform_width} ${rear_platform_depth}" />
       </geometry>
-      <origin xyz="0.0 0.0 ${rear_platform_height / 2.0}" />
-      <material name="red">
-        <color rgba="1 0 0 1" />
-      </material>
+      <origin xyz="0.0 0.0 ${rear_platform_height - rear_platform_depth / 2.0}" />
+      <xacro:plywood_material />
     </visual>
 
 <!--
@@ -119,6 +171,23 @@
     <child link = "base_link" />
     <origin xyz="${(platform_length/2.0) - front_platform_to_origin_arm} 0.0 ${platform_height + top_platform_to_origin_arm}" rpy="0.0 0.0 0.0" />
   </joint>
+
+  <xacro:macro name="wheel_assembly_joint" params="link x y" >
+    <joint name="platform_wheel_mount_${link}_joint" type="fixed">
+      <parent link="platform" />
+      <child link = "wheel_mount_${link}" />
+      <origin xyz="${x + wheel_mount_length / 2.0} ${y + wheel_mount_width/2.0} ${platform_height - platform_depth - wheel_mount_depth / 2.0}" rpy="0.0 0.0 0.0" />
+    </joint>
+  </xacro:macro>
+
+  <xacro:wheel_assembly_joint link="front_right" x="${front_platform_to_origin_arm + wheel_mount_offset_x}" y="${-platform_width / 2.0}" />
+
+  <xacro:wheel_assembly_joint link="front_left" x="${front_platform_to_origin_arm + wheel_mount_offset_x}" y="${platform_width / 2.0}" />
+
+  <xacro:wheel_assembly_joint link="back_right" x="${front_platform_to_origin_arm - platform_length - rear_platform_length}" y="${-platform_width / 2.0}" />
+
+  <xacro:wheel_assembly_joint link="back_left" x="${front_platform_to_origin_arm - platform_length - rear_platform_length}" y="${platform_width / 2.0}" />
+
 
   <joint name="end_effector_joint" type="fixed">
     <parent link="ee_link" />
