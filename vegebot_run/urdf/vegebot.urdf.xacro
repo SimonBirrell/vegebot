@@ -30,6 +30,15 @@
   <xacro:property name="wheel_length" value="0.10" />
   <xacro:property name="wheel_radius" value="0.20" />
 
+  <xacro:property name="bar_width" value="0.04" />
+  <xacro:property name="bar_depth" value="0.04" />
+  <xacro:property name="bar_length" value="0.70" />
+
+  <xacro:property name="angled_bar_length" value="0.48" />
+  <xacro:property name="cross_bar_length" value="1.02" />
+
+  <xacro:property name="horizontal_bar_offset_y" value="0.47" />
+
   <xacro:property name="front_platform_to_origin_arm" value="0.16" />
   <xacro:property name="top_platform_to_origin_arm" value="0.0" />
 
@@ -61,6 +70,12 @@
   <xacro:macro name="plywood_material">
       <material name="brown">
         <color rgba="0.89 0.7565 0.445 1" />
+      </material>
+  </xacro:macro>
+
+  <xacro:macro name="bar_material">
+      <material name="deep_brown">
+        <color rgba="0.55 0.2563 0.0605 1" />
       </material>
   </xacro:macro>
 
@@ -122,6 +137,48 @@
     <xacro:wheel_assembly />
   </link>
 
+  <xacro:macro name="bar" params="name length">
+    <link name="${name}">
+      <visual>
+        <geometry>
+          <box size="${length} ${bar_width} ${bar_depth}" />
+        </geometry>
+        <origin xyz="0.0 0.0 0.0" />
+        <xacro:bar_material />
+      </visual>    
+    </link>
+  </xacro:macro>
+
+  <xacro:macro name="angled_bar" params="name length">
+    <link name="${name}">
+      <visual>
+        <geometry>
+          <box size="${length} ${bar_width} ${bar_depth}" />
+        </geometry>
+        <origin xyz="${length / 2.0} 0.0 0.0" />
+        <xacro:bar_material />
+      </visual>    
+    </link>
+  </xacro:macro>
+
+  <xacro:macro name="cross_bar" params="name length">
+    <link name="${name}">
+      <visual>
+        <geometry>
+          <box size="${length} ${bar_width} ${bar_depth}" />
+        </geometry>
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+        <xacro:bar_material />
+      </visual>    
+    </link>
+  </xacro:macro>
+
+  <xacro:bar name="horizontal_bar_right" length="${bar_length}" />  
+  <xacro:bar name="horizontal_bar_left" length="${bar_length}" />  
+  <xacro:angled_bar name="angled_bar_right" length="${angled_bar_length}" />  
+  <xacro:angled_bar name="angled_bar_left" length="${angled_bar_length}" />  
+  <xacro:angled_bar name="cross_bar" length="${cross_bar_length}" />  
+
   <link name="rear_platform">
    
     <visual>
@@ -132,14 +189,6 @@
       <xacro:plywood_material />
     </visual>
 
-<!--
-    <collision>
-      <geometry>
-        <box size="${platform_length} ${platform_width} ${platform_height}" />
-      </geometry>
-      <origin xyz="0.0 0.0 0.0" />
-    </collision>
--->    
   </link>
 
   <link name="camera_link">
@@ -188,6 +237,32 @@
 
   <xacro:wheel_assembly_joint link="back_left" x="${front_platform_to_origin_arm - platform_length - rear_platform_length}" y="${platform_width / 2.0}" />
 
+<xacro:macro name="platform_horizontal_bar_joint" params="name y">
+  <joint name="platform_horizontal_bar_${name}_joint" type="fixed">
+    <parent link="platform" />
+    <child link="horizontal_bar_${name}" />
+    <origin xyz="${front_platform_to_origin_arm - bar_length / 2.0} ${y} ${platform_height + bar_depth / 2.0}" />
+  </joint>
+</xacro:macro>
+
+<xacro:macro name="angled_bar_joint" params="name y">
+  <joint name="platform_angled_bar_${name}_joint" type="fixed">
+    <parent link="platform" />
+    <child link="angled_bar_${name}" />
+    <origin xyz="${front_platform_to_origin_arm - bar_length} ${y} ${platform_height + bar_depth / 2.0}" rpy="0.0 ${3.14+1.024} 0.0" />
+  </joint>
+</xacro:macro>
+
+<xacro:platform_horizontal_bar_joint name="right" y="${-horizontal_bar_offset_y}" />  
+<xacro:platform_horizontal_bar_joint name="left" y="${horizontal_bar_offset_y}" />  
+<xacro:angled_bar_joint name="right" y="${-horizontal_bar_offset_y}" />  
+<xacro:angled_bar_joint name="left" y="${horizontal_bar_offset_y}" />  
+
+  <joint name="platform_cross_bar_joint" type="fixed">
+    <parent link="platform" />
+    <child link="cross_bar" />
+    <origin xyz="${front_platform_to_origin_arm - bar_length - 0.27} ${-cross_bar_length / 2.0} ${platform_height + 0.41}" rpy="0.0 0.0 ${3.14 / 2.0}" />
+  </joint>
 
   <joint name="end_effector_joint" type="fixed">
     <parent link="ee_link" />
