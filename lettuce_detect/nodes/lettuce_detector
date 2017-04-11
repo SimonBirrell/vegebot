@@ -178,7 +178,7 @@ def transform_2D_hypothesis_to_3D(hypothesis_2D):
     return None        
  
 def image_to_image_message(image):
-    return OpenCVBridge.cv2_to_imgmsg(image)
+    return OpenCVBridge.cv2_to_imgmsg(image, "bgr8")
 
 def image_message_to_cv2_image(image):
     return OpenCVBridge.imgmsg_to_cv2(image)

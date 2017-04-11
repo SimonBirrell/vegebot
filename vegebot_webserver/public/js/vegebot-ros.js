@@ -167,7 +167,7 @@ function sendVegebotCommand(commandString) {
 function create3DLettuce(radius, x, y, z) {
 	console.log("**** Creating 3D sphere *****");
 	var geometry = new THREE.SphereGeometry( radius, 32, 32 );
-	var material = new THREE.MeshBasicMaterial( {color: 0x33ff33} );
+	var material = new THREE.MeshLambertMaterial( {color: 0x33ff33} );
 	var sphere = new THREE.Mesh( geometry, material );
 
 	//Viewer.addObject(sphere, true);

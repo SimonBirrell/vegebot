@@ -10,6 +10,7 @@ from vegebot_msgs.msg import LettuceHypothesis
 from geometry_msgs.msg import Pose
 from sensor_msgs.msg import Image, CompressedImage
 from cv_bridge import CvBridge, CvBridgeError
+from random import randint
 
 LETTUCE_RADIUS = 0.05
 LETTUCE_X_OFFSET = 0.7
@@ -18,7 +19,7 @@ LETTUCE_Y_SPACING = 0.3
 LETTUCE_Z_OFFSET = LETTUCE_RADIUS
 
 LETTUCE_IMAGE_TOPIC_NAME = '/vegebot/lettuce_video/raw_images'
-LETTUCE_IMAGE_TEST_FILE = '/home/simonbirrell/catkin_ws/src/vegebot/lettuce_test/nodes/lettuce_test.jpg'
+LETTUCE_IMAGE_TEST_FILE = '/home/simonbirrell/catkin_ws/src/vegebot/lettuce_test/nodes/lettuce_test_'
 
 Lettuce_hypothesis_topic = 0
 Lettuce_images_raw_topic = None
@@ -70,7 +71,10 @@ def take_snapshot(message):
 
 def publish_fake_image():
 	print("Publishing fake image !!!!")
-	publish_jpeg_from_file(LETTUCE_IMAGE_TOPIC_NAME, LETTUCE_IMAGE_TEST_FILE)	
+	file_number = randint(0,8)
+	filename = LETTUCE_IMAGE_TEST_FILE + '0' + str(file_number) + '.jpeg' 
+	print filename
+	publish_jpeg_from_file(LETTUCE_IMAGE_TOPIC_NAME, filename)	
 
 def publish_fake_lettuces():	
 	global Last_snapshot
