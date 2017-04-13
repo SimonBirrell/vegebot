@@ -2,10 +2,14 @@
 	<!-- Overall parameters -->
 	<param name="/move_group/trajectory_execution/allowed_start_tolerance" value="0.0" />
  
+ <!--
 	<node pkg="vegebot_commander" name="vegebot_commander" type="vegebot_commander" output="screen">
 	</node>
-
+-->
 	<node pkg="lettuce_test" name="test" type="test">
+	</node>
+
+	<node pkg="lettuce_detect" name="lettuce_detector" type="lettuce_detector">
 	</node>
 
 	<!-- UI infrastructure -->

@@ -34,6 +34,10 @@
   <xacro:property name="bar_depth" value="0.04" />
   <xacro:property name="bar_length" value="0.70" />
 
+  <xacro:property name="strut_width" value="0.08" />
+  <xacro:property name="strut_depth" value="0.08" />
+  <xacro:property name="strut_length" value="1.09" />
+
   <xacro:property name="angled_bar_length" value="0.48" />
   <xacro:property name="cross_bar_length" value="1.02" />
 
@@ -61,7 +65,7 @@
         </cylinder>
         <origin xyz="${wheel_offset_x} 0.0 ${wheel_offset_z}" rpy="1.57075 0.0 0.0" />
         <material name="dark_grey">
-          <color rgba="0.2 0.2 0.2 1" />
+          <color rgba="0.1 0.1 0.1 1" />
         </material>
       </geometry>
     </visual>
@@ -75,7 +79,7 @@
 
   <xacro:macro name="bar_material">
       <material name="deep_brown">
-        <color rgba="0.55 0.2563 0.0605 1" />
+        <color rgba="0.41 0.164 0.0 1" />
       </material>
   </xacro:macro>
 
@@ -96,7 +100,7 @@
       </geometry>
       <origin xyz="0.0 0.0 ${-floor_thickness / 2.0}" />
       <material name="gray">
-        <color rgba="0.1 0.1 0.1 1" />
+        <color rgba="0.1 0.1 0.4 1" />
       </material>
     </visual>
   </link>
@@ -136,6 +140,21 @@
   <link name="wheel_mount_back_left">
     <xacro:wheel_assembly />
   </link>
+
+  <xacro:macro name="strut" params="name">
+    <link name="${name}">
+      <visual>
+        <geometry>
+          <box size="${strut_length} ${strut_width} ${strut_depth}" />
+        </geometry>
+        <origin xyz="0.0 0.0 0.0" />
+        <xacro:bar_material />
+      </visual>    
+    </link>
+  </xacro:macro>
+
+  <xacro:strut name="strut_right" />
+  <xacro:strut name="strut_left" />
 
   <xacro:macro name="bar" params="name length">
     <link name="${name}">
@@ -231,11 +250,11 @@
 
   <xacro:wheel_assembly_joint link="front_right" x="${front_platform_to_origin_arm + wheel_mount_offset_x}" y="${-platform_width / 2.0}" />
 
-  <xacro:wheel_assembly_joint link="front_left" x="${front_platform_to_origin_arm + wheel_mount_offset_x}" y="${platform_width / 2.0}" />
+  <xacro:wheel_assembly_joint link="front_left" x="${front_platform_to_origin_arm + wheel_mount_offset_x}" y="${platform_width / 2.0 - wheel_mount_width}" />
 
   <xacro:wheel_assembly_joint link="back_right" x="${front_platform_to_origin_arm - platform_length - rear_platform_length}" y="${-platform_width / 2.0}" />
 
-  <xacro:wheel_assembly_joint link="back_left" x="${front_platform_to_origin_arm - platform_length - rear_platform_length}" y="${platform_width / 2.0}" />
+  <xacro:wheel_assembly_joint link="back_left" x="${front_platform_to_origin_arm - platform_length - rear_platform_length}" y="${platform_width / 2.0 - wheel_mount_width}" />
 
 <xacro:macro name="platform_horizontal_bar_joint" params="name y">
   <joint name="platform_horizontal_bar_${name}_joint" type="fixed">
@@ -263,6 +282,17 @@
     <child link="cross_bar" />
     <origin xyz="${front_platform_to_origin_arm - bar_length - 0.27} ${-cross_bar_length / 2.0} ${platform_height + 0.41}" rpy="0.0 0.0 ${3.14 / 2.0}" />
   </joint>
+
+  <xacro:macro name="platform_strut_joint" params="name y">
+    <joint name="platform_strut_${name}_joint" type="fixed">
+      <parent link="platform" />
+      <child link="strut_${name}" />
+      <origin xyz="${front_platform_to_origin_arm + wheel_mount_offset_x + wheel_mount_length - strut_length / 2.0} ${y} ${platform_height - platform_depth - strut_depth}" />
+    </joint>
+  </xacro:macro>
+
+  <xacro:platform_strut_joint name="right" y="${platform_width / 2.0 - strut_width / 2.0}" />
+  <xacro:platform_strut_joint name="left" y="${-platform_width / 2.0 + strut_width / 2.0}" />
 
   <joint name="end_effector_joint" type="fixed">
     <parent link="ee_link" />

@@ -9,6 +9,8 @@ import moveit_commander
 from moveit_commander import MoveGroupCommander, PlanningSceneInterface, RobotCommander
 import moveit_msgs.msg
 import geometry_msgs.msg
+from ur_msgs.srv import SetIO
+#import ur_msgs
 
 PICK_POSITION = [ 1.0, 0.0, 0.5]
 PICK_ORIENTATION = [ 0.0, 0.707106781, 0.0, 0.707106781]
@@ -28,6 +30,9 @@ PREGRASP_OFFSET = [0.0, 0.0, 0.3]
 URF10_ORIGIN = [0.0, 0.0, 0.0]
 
 MAX_PLANNING_ATTEMPTS = 10
+
+UR10_DIGITAL_IO_OUT = 1
+UR10_BLADE_PIN = 8
 
 Robot = 0
 Scene = 0
@@ -81,6 +86,7 @@ def do_pick(position):
     move_to(position, PICK_ORIENTATION)
 
     print("== Cut lettuce...")
+    blade_cut()
     print("== Retreat from lettuce...")
     move_to(pregrasp_position, PICK_ORIENTATION)
     print("== Detect if lettuce is in the bucket ==")
@@ -90,6 +96,7 @@ def do_place():
     print("== Moving end effector to place position...")
     move_to(PLACE_POSITION, PLACE_ORIENTATION)
     print("== Release lettuce...")
+    blade_release()
 
 def subtract_vectors(vector1, vector2):
     vector3 = [0.0, 0.0, 0.0]
@@ -118,7 +125,7 @@ def move_to(position, orientation):
     while (attempts < MAX_PLANNING_ATTEMPTS):
         print "Planning attempt %s" % attempts
         trajectory = Manipulator.plan()
-        print trajectory
+        #print trajectory
         if (plan_has_succeeded(trajectory)):
             break
         attempts = attempts + 1    
@@ -206,6 +213,22 @@ def trigger_fake_image_snapshot():
 def take_snapshot():
     print("Taking snapshot...")
     Snapshot_publisher.publish('fake_lettuces')
+
+def blade_cut():
+    print("ACTIVATING BLADE!!!")
+    blade_IO(1)
+
+def blade_release():    
+    print("RETRACTING BLADE!!!")
+    blade_IO(0)
+
+def blade_IO(voltage_level):
+    # https://github.com/ThomasTimm/ur_modern_driver/issues/61 
+    io_msg = SetIO()
+    io_msg.fun = UR10_DIGITAL_IO_OUT
+    io_msg.pin = UR10_BLADE_PIN
+    io_msg.state = voltage_level    
+    rospy.ServiceProxy('/ur_driver/set_io', io_msg)
 
 # Communications        
     
