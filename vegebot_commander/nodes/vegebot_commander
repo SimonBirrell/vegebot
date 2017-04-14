@@ -4,6 +4,7 @@ import rospy
 from std_msgs.msg import String, Bool
 
 import sys
+import time
 import copy
 import moveit_commander
 from moveit_commander import MoveGroupCommander, PlanningSceneInterface, RobotCommander
@@ -72,25 +73,38 @@ def offset_end_effector_from_lettuce(position):
 def park(params):
     print("== Parking...") 
     move_to(PARK_POSITION, PARK_ORIENTATION)  
+    blade_cut()
+    timer.sleep(5)
+    blade_release()
     print("== Parked.")
 
 def do_pick(position):
-    print("== Moving to pregrasp position...")
     pregrasp_position = add_vectors(position, PREGRASP_OFFSET)
-    print("////////////")
-    print(position)
-    print(pregrasp_position)
-    print("////////////")
-    move_to(pregrasp_position, PICK_ORIENTATION)
-    print("== Approach lettuce...")
-    move_to(position, PICK_ORIENTATION)
 
-    print("== Cut lettuce...")
+    # if (reach_to_pregrasp_position(pregrasp_position) or True):
+    #     if (descend_on_lettuce(position) or True):
+    #         blade_cut()
+    #         ascend_from_lettuce(pregrasp_position)
+
+    reach_to_pregrasp_position(pregrasp_position)
+    descend_on_lettuce(position)        
     blade_cut()
-    print("== Retreat from lettuce...")
-    move_to(pregrasp_position, PICK_ORIENTATION)
+    ascend_from_lettuce(pregrasp_position)
+
     print("== Detect if lettuce is in the bucket ==")
     return True
+
+def reach_to_pregrasp_position(pregrasp_position):
+    print("== Moving to pregrasp position...")
+    return move_to(pregrasp_position, PICK_ORIENTATION)
+
+def descend_on_lettuce(position):
+    print("== Approach lettuce...")
+    return move_to(position, PICK_ORIENTATION)
+
+def ascend_from_lettuce(pregrasp_position):
+    print("== Retreat from lettuce...")
+    return move_to(pregrasp_position, PICK_ORIENTATION)
 
 def do_place():
     print("== Moving end effector to place position...")
@@ -132,9 +146,7 @@ def move_to(position, orientation):
     if (not plan_has_succeeded(trajectory)):
         print("********* Could not find plan after %s attempts ********" % attempts)
         return False
-
-    print "== Visualizing plan"
-    #visualize_plan(plan)
+    #return True
 
     print("== Moving to target pose...")
     #result = Manipulator.go(wait=True)
@@ -215,11 +227,11 @@ def take_snapshot():
     Snapshot_publisher.publish('fake_lettuces')
 
 def blade_cut():
-    print("ACTIVATING BLADE!!!")
+    print("== ACTIVATING BLADE!!!")
     blade_IO(1)
 
 def blade_release():    
-    print("RETRACTING BLADE!!!")
+    print("== RETRACTING BLADE!!!")
     blade_IO(0)
 
 def blade_IO(voltage_level):

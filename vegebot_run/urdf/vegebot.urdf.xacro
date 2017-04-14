@@ -210,6 +210,21 @@
 
   </link>
 
+<xacro:macro name="side_constraint" params="side">
+  <link name="constraint_${side}_side">
+    <collision>
+      <geometry>
+        <box size="4.0 0.2 2.0" />
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+    </collision>
+    <xacro:plywood_material />    
+  </link>
+</xacro:macro>
+
+<xacro:side_constraint side="right" />
+<xacro:side_constraint side="left" />
+
   <link name="camera_link">
     <visual>
       <geometry>
@@ -293,6 +308,16 @@
 
   <xacro:platform_strut_joint name="right" y="${platform_width / 2.0 - strut_width / 2.0}" />
   <xacro:platform_strut_joint name="left" y="${-platform_width / 2.0 + strut_width / 2.0}" />
+
+  <xacro:macro name="platform_side_constraint" params="side y">
+    <joint name="platform_${side}_side_constraint" type="fixed">
+      <parent link="platform" />
+      <child link="constraint_${side}_side" />
+      <origin xyz="0.0 ${y} 1.0" rpy="0.0 0.0 0.0" />
+    </joint>
+  </xacro:macro>
+  <xacro:platform_side_constraint side="right" y="${-platform_width / 2.0}" />
+  <xacro:platform_side_constraint side="left" y="${platform_width / 2.0}" />
 
   <joint name="end_effector_joint" type="fixed">
     <parent link="ee_link" />
