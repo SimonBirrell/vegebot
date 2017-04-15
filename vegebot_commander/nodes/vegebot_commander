@@ -175,7 +175,7 @@ def cartesian_move_to(position, orientation):
 
     end_effector_link = Manipulator.get_end_effector_link()
     start_pose = Manipulator.get_current_pose(end_effector_link).pose
-    end_pose = new_pose(position, orientation)
+    end_pose = deepcopy(new_pose(position, orientation))
     waypoints=[]
     # Don-t add start point! 
     # http://answers.ros.org/question/253004/moveit-problem-error-trajectory-message-contains-waypoints-that-are-not-strictly-increasing-in-time/
@@ -202,11 +202,13 @@ def cartesian_move_to(position, orientation):
         rospy.loginfo(start_pose.position)
         rospy.loginfo(end_pose.position)
         Manipulator.execute(plan)
-        rospy.sleep(2)
+        workaround = Robot.get_current_state()
+        #rospy.sleep(2)
         rospy.loginfo("******** Successfully executed Carteian trajectory.")
+        return True
     else:
         rospy.loginfo("Failed to find Cartesian trajectory after " + str(attempts) + " attempts...")
-
+        return False
 
 def plan_has_succeeded(trajectory):
     if (trajectory==None):
