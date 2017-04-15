@@ -87,7 +87,9 @@ def do_pick(position):
         if (descend_on_lettuce(position)):
             blade_cut()
             ascend_from_lettuce(pregrasp_position)
+            #return True
 
+    #rospy.loginfo("**** Problem with picking...")
     # reach_to_pregrasp_position(pregrasp_position)
     # descend_on_lettuce(position)        
     # blade_cut()
