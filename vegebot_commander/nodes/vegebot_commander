@@ -6,11 +6,13 @@ from std_msgs.msg import String, Bool
 import sys
 import time
 import copy
+from copy import deepcopy
 import moveit_commander
 from moveit_commander import MoveGroupCommander, PlanningSceneInterface, RobotCommander
 import moveit_msgs.msg
 import geometry_msgs.msg
 from ur_msgs.srv import SetIO
+
 #import ur_msgs
 
 PICK_POSITION = [ 1.0, 0.0, 0.5]
@@ -81,15 +83,16 @@ def park(params):
 def do_pick(position):
     pregrasp_position = add_vectors(position, PREGRASP_OFFSET)
 
-    # if (reach_to_pregrasp_position(pregrasp_position) or True):
-    #     if (descend_on_lettuce(position) or True):
-    #         blade_cut()
-    #         ascend_from_lettuce(pregrasp_position)
+    if (reach_to_pregrasp_position(pregrasp_position)):
+        if (descend_on_lettuce(position)):
+            blade_cut()
+            ascend_from_lettuce(pregrasp_position)
 
-    reach_to_pregrasp_position(pregrasp_position)
-    descend_on_lettuce(position)        
-    blade_cut()
-    ascend_from_lettuce(pregrasp_position)
+    # reach_to_pregrasp_position(pregrasp_position)
+    # descend_on_lettuce(position)        
+    # blade_cut()
+    # rospy.sleep(2.0)
+    # ascend_from_lettuce(pregrasp_position)
 
     print("== Detect if lettuce is in the bucket ==")
     return True
@@ -98,13 +101,21 @@ def reach_to_pregrasp_position(pregrasp_position):
     print("== Moving to pregrasp position...")
     return move_to(pregrasp_position, PICK_ORIENTATION)
 
+CARTESIAN_APPROACH = True
+
 def descend_on_lettuce(position):
     print("== Approach lettuce...")
-    return move_to(position, PICK_ORIENTATION)
+    if (CARTESIAN_APPROACH):
+        return cartesian_move_to(position, PICK_ORIENTATION)
+    else:
+        return move_to(position, PICK_ORIENTATION)
 
 def ascend_from_lettuce(pregrasp_position):
     print("== Retreat from lettuce...")
-    return move_to(pregrasp_position, PICK_ORIENTATION)
+    if (CARTESIAN_APPROACH):
+        return cartesian_move_to(pregrasp_position, PICK_ORIENTATION)
+    else:
+        return move_to(pregrasp_position, PICK_ORIENTATION)
 
 def do_place():
     print("== Moving end effector to place position...")
@@ -146,19 +157,56 @@ def move_to(position, orientation):
     if (not plan_has_succeeded(trajectory)):
         print("********* Could not find plan after %s attempts ********" % attempts)
         return False
-    #return True
 
     print("== Moving to target pose...")
-    #result = Manipulator.go(wait=True)
     result = Manipulator.execute(trajectory)
     print("----------------------------")
     print result
     print("----------------------------")
     # This following get_current_state() call appears to be necessary to normalize 
     # joint angles
-    #print Robot.get_current_state()
+    workaround = Robot.get_current_state()
     rospy.loginfo("== Move complete!")
-    return True
+    return result
+    # return True
+
+def cartesian_move_to(position, orientation):
+    global Manipulator
+
+    end_effector_link = Manipulator.get_end_effector_link()
+    start_pose = Manipulator.get_current_pose(end_effector_link).pose
+    end_pose = new_pose(position, orientation)
+    waypoints=[]
+    # Don-t add start point! 
+    # http://answers.ros.org/question/253004/moveit-problem-error-trajectory-message-contains-waypoints-that-are-not-strictly-increasing-in-time/
+    #waypoints.append(deepcopy(start_pose))
+    waypoints.append(end_pose)
+
+    fraction = 0.0
+    max_tries = 100
+    attempts = 0
+    eef_step = 0.01
+    jump_threshold = 0.0
+    avoid_collisions = True
+    while fraction < 1.0 and attempts < max_tries:
+        (plan, fraction) = Manipulator.compute_cartesian_path(
+                                        waypoints,
+                                        eef_step,
+                                        jump_threshold,
+                                        avoid_collisions)
+        attempts += 1
+        if attempts % 100 == 0:
+            rospy.loginfo("Still attempting cartesian after " + str(attempts) + " attempts...")
+    if fraction==1.0:
+        rospy.loginfo("******** Successfully found Carteian trajectory.")
+        rospy.loginfo(start_pose.position)
+        rospy.loginfo(end_pose.position)
+        Manipulator.execute(plan)
+        rospy.sleep(2)
+        rospy.loginfo("******** Successfully executed Carteian trajectory.")
+    else:
+        rospy.loginfo("Failed to find Cartesian trajectory after " + str(attempts) + " attempts...")
+
 
 def plan_has_succeeded(trajectory):
     if (trajectory==None):
