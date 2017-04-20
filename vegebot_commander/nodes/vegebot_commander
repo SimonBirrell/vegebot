@@ -21,14 +21,16 @@ PICK_ORIENTATION = [ 0.0, 0.707106781, 0.0, 0.707106781]
 PARK_POSITION = [ 0.38309, -0.39763, 0.93282]
 PARK_ORIENTATION = [ 0.0, 0.707106781, 0.0, 0.707106781]
 
-PLACE_POSITION = [ -0.3, 0.8, 1.2]
+#PLACE_POSITION = [ -0.3, 0.8, 1.2]
+PLACE_POSITION = [ -0.2, -0.7, 0.93282]
 PLACE_ORIENTATION = [ 0.0, 0.707106781, 0.0, 0.707106781]
 
 SCAN_POSITION = [ 1.0, 0.0, 0.5]
 SCAN_ORIENTATION= [ 0.0, 0.707106781, 0.0, 0.707106781]
 
-END_EFFECTOR_TO_LETTUCE_Z = 0.15
+END_EFFECTOR_TO_LETTUCE_Z = 0.18
 PREGRASP_OFFSET = [0.0, 0.0, 0.3]
+TARGET_END_EFFECTOR_OFFSET = [0.0, 0.0, END_EFFECTOR_TO_LETTUCE_Z]
 
 URF10_ORIGIN = [0.0, 0.0, 0.0]
 
@@ -82,9 +84,11 @@ def park(params):
 
 def do_pick(position):
     pregrasp_position = add_vectors(position, PREGRASP_OFFSET)
+    pregrasp_position = add_vectors(pregrasp_position, TARGET_END_EFFECTOR_OFFSET)
+    target_position = add_vectors(position, TARGET_END_EFFECTOR_OFFSET)
 
     if (reach_to_pregrasp_position(pregrasp_position)):
-        if (descend_on_lettuce(position)):
+        if (descend_on_lettuce(target_position)):
             blade_cut()
             ascend_from_lettuce(pregrasp_position)
             #return True

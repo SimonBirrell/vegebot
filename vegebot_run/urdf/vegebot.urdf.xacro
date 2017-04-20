@@ -30,6 +30,16 @@
   <xacro:property name="wheel_length" value="0.10" />
   <xacro:property name="wheel_radius" value="0.20" />
 
+  <xacro:property name="bucket_length" value="0.24" />
+  <xacro:property name="bucket_radius" value="0.14" />
+  <xacro:property name="ee_bucket_offset_x" value="0.12" />
+
+  <xacro:property name="pneumatic_width" value="0.22" />
+  <xacro:property name="pneumatic_depth" value="0.06" />
+  <xacro:property name="pneumatic_length" value="0.18" />
+  <xacro:property name="bucket_pneumatic_offset_x" value="0.0" />
+  <xacro:property name="bucket_pneumatic_offset_y" value="0.28" />
+
   <xacro:property name="bar_width" value="0.04" />
   <xacro:property name="bar_depth" value="0.04" />
   <xacro:property name="bar_length" value="0.70" />
@@ -48,6 +58,7 @@
 
   <xacro:property name="ee_camera_offset_x" value="0.1" />
   <xacro:property name="camera_size" value="0.05" />
+  <xacro:property name="camera_offset_y" value="0.05" />
 
   <xacro:macro name="wheel_assembly">
     <visual>
@@ -322,7 +333,44 @@
   <joint name="end_effector_joint" type="fixed">
     <parent link="ee_link" />
     <child link = "camera_link" />
-    <origin xyz="${ee_camera_offset_x} 0.0 0.0" rpy="0.0 0.0 0.0" />
+    <origin xyz="${bucket_length} 0.0 ${bucket_radius + camera_offset_y}" rpy="0.0 0.0 0.0" />
+  </joint>
+
+  <link name="bucket_link">
+    <visual>
+      <geometry>
+        <cylinder length="${bucket_length}" radius="${bucket_radius}" />
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+       <material name="dark_gray">
+        <color rgba="0.8 0.8 0.8 1" />
+      </material> 
+    </visual>
+  </link>
+
+  <joint name="end_effector_bucket_joint" type="fixed">
+    <parent link="ee_link" />
+    <child link = "bucket_link" />
+    <origin xyz="${ee_bucket_offset_x} 0.0 0.0" rpy="0.0 1.5708 0.0" />
+  </joint>
+
+  <link name="pneumatic_link">
+    <visual>
+      <geometry>
+        <box size="${pneumatic_length} ${pneumatic_width} ${pneumatic_depth}" />
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+       <material name="dark_gray">
+        <color rgba="0.8 0.8 0.8 1" />
+      </material> 
+    </visual>
+  </link>
+
+  <joint name="bucket_pneumatic_joint" type="fixed">
+    <parent link="bucket_link" />
+    <child link = "pneumatic_link" />
+
+    <origin xyz="0.0 ${bucket_radius + pneumatic_width / 2.0 + 0.05} ${bucket_length / 2.0 - pneumatic_depth / 2.0}" rpy="0.0 0.0 0.0" />
   </joint>
 
 </robot>
