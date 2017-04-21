@@ -20,12 +20,14 @@ LETTUCE_Z_OFFSET = LETTUCE_RADIUS
 
 LETTUCE_IMAGE_TOPIC_NAME = '/vegebot/lettuce_video/raw_images'
 LETTUCE_IMAGE_TEST_FILE = '/home/simonbirrell/catkin_ws/src/vegebot/lettuce_test/nodes/lettuce_test_'
+CAMERA_TOPIC_NAME = '/usb_cam/image_raw'
 
 Lettuce_hypothesis_topic = 0
 Lettuce_images_raw_topic = None
 
 Last_snapshot = 0
 OpenCVBridge = 0
+Last_camera_image = None
 
 ########################### Imagery ############################################
 
@@ -48,6 +50,18 @@ def publish_jpeg_from_file(topic_name, filename):
 	Lettuce_images_raw_topic.publish(image_message)
 	print("Image published!")
 
+def publish_image_from_array(topic_name, image):
+	global Lettuce_images_raw_topic
+
+	image_message = image
+	Lettuce_images_raw_topic.publish(image_message)
+
+def receive_camera_image(message):
+	global Last_camera_image
+
+	Last_camera_image = message	
+
+
 ################################################################################
 
 def set_up_lettuce_hypotheses_topic():
@@ -60,6 +74,9 @@ def set_up_lettuce_hypotheses_topic():
 def set_up_take_snapshot_topic():
     rospy.Subscriber("/vegebot/lettuce_test/take_snapshot", String, take_snapshot)
 
+def set_up_camwera_topic():
+    rospy.Subscriber(CAMERA_TOPIC_NAME, Image, receive_camera_image)
+
 def take_snapshot(message):
 	command = message.data
 	print("Take Snapshot!!!!!")  
@@ -68,6 +85,8 @@ def take_snapshot(message):
 		publish_fake_lettuces()
 	elif (command == "fake_image"):
 		publish_fake_image()
+	elif (command == "camera_image"):
+		publish_camera_image()
 
 def publish_fake_image():
 	print("Publishing fake image !!!!")
@@ -75,6 +94,10 @@ def publish_fake_image():
 	filename = LETTUCE_IMAGE_TEST_FILE + '0' + str(file_number) + '.jpeg' 
 	print filename
 	publish_jpeg_from_file(LETTUCE_IMAGE_TOPIC_NAME, filename)	
+
+def publish_camera_image():
+	print("Publishing camera image !!!!")
+	publish_image_from_array(LETTUCE_IMAGE_TOPIC_NAME, Last_camera_image)	
 
 def publish_fake_lettuces():	
 	global Last_snapshot
@@ -141,6 +164,7 @@ if __name__ == '__main__':
     set_up_opencv()
     lettuce_hypotheses_topic = set_up_lettuce_hypotheses_topic()
     lettuce_images_raw_topic = set_up_lettuce_images_raw_topic()
+    camera_topic = set_up_camwera_topic()
     set_up_take_snapshot_topic()
     rospy.init_node('lettucetest', anonymous=True)
 

@@ -20,7 +20,7 @@ from geometry_msgs.msg import PoseStamped, Pose
 #import ur_msgs
 
 DISABLE_MOVEMENT = False
-DISABLE_IO = False 
+DISABLE_IO = True 
 
 PICK_POSITION = [ 1.0, 0.0, 0.5]
 PICK_ORIENTATION = [ 0.0, 0.707106781, 0.0, 0.707106781]
@@ -298,9 +298,19 @@ def detect_image(params):
     print("Generating fake image...")
     trigger_fake_image_snapshot()
 
+def detect_camera(params):
+    print("Moving to camera position...")
+    move_to(SCAN_POSITION, SCAN_ORIENTATION)  
+    print("Generating fake image...")
+    trigger_camera_snapshot()
+
 def trigger_fake_image_snapshot():
     print("Triggering fake image snapshot...")
     Snapshot_publisher.publish('fake_image')
+
+def trigger_camera_snapshot():
+    print("Triggering fake image snapshot...")
+    Snapshot_publisher.publish('camera_image')
 
 def take_snapshot():
     print("Taking snapshot...")
@@ -374,6 +384,8 @@ def callback(data):
         detect(params) 
     elif (params[0]=='detect_image'):
         detect_image(params) 
+    elif (params[0]=='detect_camera'):
+        detect_camera(params) 
 
 def prepare_snapshot_publisher():
     global Snapshot_publisher 
