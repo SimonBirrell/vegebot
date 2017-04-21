@@ -13,7 +13,14 @@ import moveit_msgs.msg
 import geometry_msgs.msg
 from ur_msgs.srv import SetIO
 
+from moveit_msgs.msg import RobotTrajectory
+from trajectory_msgs.msg import JointTrajectoryPoint
+from geometry_msgs.msg import PoseStamped, Pose
+
 #import ur_msgs
+
+DISABLE_MOVEMENT = False
+DISABLE_IO = False 
 
 PICK_POSITION = [ 1.0, 0.0, 0.5]
 PICK_ORIENTATION = [ 0.0, 0.707106781, 0.0, 0.707106781]
@@ -28,7 +35,8 @@ PLACE_ORIENTATION = [ 0.0, 0.707106781, 0.0, 0.707106781]
 SCAN_POSITION = [ 1.0, 0.0, 0.5]
 SCAN_ORIENTATION= [ 0.0, 0.707106781, 0.0, 0.707106781]
 
-END_EFFECTOR_TO_LETTUCE_Z = 0.18
+END_EFFECTOR_TO_LETTUCE_Z = 0.14
+#END_EFFECTOR_TO_LETTUCE_Z = 0.18
 PREGRASP_OFFSET = [0.0, 0.0, 0.3]
 TARGET_END_EFFECTOR_OFFSET = [0.0, 0.0, END_EFFECTOR_TO_LETTUCE_Z]
 
@@ -37,7 +45,10 @@ URF10_ORIGIN = [0.0, 0.0, 0.0]
 MAX_PLANNING_ATTEMPTS = 10
 
 UR10_DIGITAL_IO_OUT = 1
-UR10_BLADE_PIN = 8
+UR10_BLADE_PIN8 = 16
+UR10_BLADE_PIN9 = 17
+
+VELOCITY_SCALE = 0.75
 
 Robot = 0
 Scene = 0
@@ -90,6 +101,7 @@ def do_pick(position):
     if (reach_to_pregrasp_position(pregrasp_position)):
         if (descend_on_lettuce(target_position)):
             blade_cut()
+            rospy.sleep(2)
             ascend_from_lettuce(pregrasp_position)
             #return True
 
@@ -144,6 +156,10 @@ def add_vectors(vector1, vector2):
 def move_to(position, orientation):
     global Manipulator
 
+    if DISABLE_MOVEMENT:
+        rospy.sleep(3)
+        return True
+
     print("Moving...")
     print "== Setting target"
     pose_target = new_pose(position, orientation)
@@ -165,7 +181,9 @@ def move_to(position, orientation):
         return False
 
     print("== Moving to target pose...")
-    result = Manipulator.execute(trajectory)
+    scaled_trajectory = scale_trajectory_speed(trajectory, VELOCITY_SCALE)
+    #result = Manipulator.execute(trajectory)
+    result = Manipulator.execute(scaled_trajectory)
     print("----------------------------")
     print result
     print("----------------------------")
@@ -178,6 +196,10 @@ def move_to(position, orientation):
 
 def cartesian_move_to(position, orientation):
     global Manipulator
+
+    if DISABLE_MOVEMENT:
+        rospy.sleep(3)
+        return True
 
     end_effector_link = Manipulator.get_end_effector_link()
     start_pose = Manipulator.get_current_pose(end_effector_link).pose
@@ -207,7 +229,9 @@ def cartesian_move_to(position, orientation):
         rospy.loginfo("******** Successfully found Carteian trajectory.")
         rospy.loginfo(start_pose.position)
         rospy.loginfo(end_pose.position)
-        Manipulator.execute(plan)
+        scaled_plan = scale_trajectory_speed(plan, VELOCITY_SCALE)
+        Manipulator.execute(scaled_plan)
+        #Manipulator.execute(plan)
         workaround = Robot.get_current_state()
         #rospy.sleep(2)
         rospy.loginfo("******** Successfully executed Carteian trajectory.")
@@ -257,7 +281,7 @@ def start_moveit():
                                     moveit_msgs.msg.DisplayTrajectory,
                                     queue_size=10)
     #print "== Printing robot state"
-    #print Robot.get_current_state()
+    print Robot.get_current_state()
 
 # End of MoveIt routines
 
@@ -284,19 +308,41 @@ def take_snapshot():
 
 def blade_cut():
     print("== ACTIVATING BLADE!!!")
-    blade_IO(1)
+    blade_IO(UR10_BLADE_PIN8, 0)
+    blade_IO(UR10_BLADE_PIN9, 1)
 
 def blade_release():    
     print("== RETRACTING BLADE!!!")
-    blade_IO(0)
+    blade_IO(UR10_BLADE_PIN8, 1)
+    blade_IO(UR10_BLADE_PIN9, 0)
 
-def blade_IO(voltage_level):
+def blade_IO(pin, voltage_level):
+    print("BladeIO Pin " + str(pin) + " to level " + str(voltage_level))
+    if DISABLE_IO:
+        return
     # https://github.com/ThomasTimm/ur_modern_driver/issues/61 
     io_msg = SetIO()
     io_msg.fun = UR10_DIGITAL_IO_OUT
-    io_msg.pin = UR10_BLADE_PIN
+    #io_msg.pin = UR10_BLADE_PIN
+    io_msg.pin = pin
     io_msg.state = voltage_level    
-    rospy.ServiceProxy('/ur_driver/set_io', io_msg)
+    service_proxy = rospy.ServiceProxy('/ur_driver/set_io', SetIO)
+    service_proxy(UR10_DIGITAL_IO_OUT, pin, voltage_level)
+
+UR10_DIGITAL_SET_VOLTAGE=4
+UR10_DIGITAL_IO_VOLTAGE=12
+
+def set_blade_voltage():
+    print("Setting voltage of digital IO")
+    if DISABLE_IO:
+        return
+    io_msg = SetIO()
+    io_msg.fun = UR10_DIGITAL_SET_VOLTAGE
+    #io_msg.pin = UR10_BLADE_PIN
+    #io_msg.pin = pin
+    io_msg.state = UR10_DIGITAL_IO_VOLTAGE    
+    service_proxy = rospy.ServiceProxy('/ur_driver/set_io', io_msg)
+    service_proxy(4, 8, 12)
 
 # Communications        
     
@@ -335,10 +381,103 @@ def prepare_snapshot_publisher():
                                             String,
                                             queue_size=10)
 
+
+def scale_trajectory_speed(traj, scale):
+       # Create a new trajectory object
+       new_traj = RobotTrajectory()
+       
+       # Initialize the new trajectory to be the same as the input trajectory
+       new_traj.joint_trajectory = traj.joint_trajectory
+       
+       # Get the number of joints involved
+       n_joints = len(traj.joint_trajectory.joint_names)
+       
+       # Get the number of points on the trajectory
+       n_points = len(traj.joint_trajectory.points)
+        
+       # Store the trajectory points
+       points = list(traj.joint_trajectory.points)
+       
+       # Cycle through all points and joints and scale the time from start,
+       # as well as joint speed and acceleration
+       for i in range(n_points):
+           point = JointTrajectoryPoint()
+           
+           # The joint positions are not scaled so pull them out first
+           point.positions = traj.joint_trajectory.points[i].positions
+
+           # Next, scale the time_from_start for this point
+           point.time_from_start = traj.joint_trajectory.points[i].time_from_start / scale
+           
+           # Get the joint velocities for this point
+           point.velocities = list(traj.joint_trajectory.points[i].velocities)
+           
+           # Get the joint accelerations for this point
+           point.accelerations = list(traj.joint_trajectory.points[i].accelerations)
+           
+           # Scale the velocity and acceleration for each joint at this point
+           for j in range(n_joints):
+               point.velocities[j] = point.velocities[j] * scale
+               point.accelerations[j] = point.accelerations[j] * scale * scale
+        
+           # Store the scaled trajectory point
+           points[i] = point
+
+       # Assign the modified points to the new trajectory
+       new_traj.joint_trajectory.points = points
+
+       # Return the new trajecotry
+       return new_traj
+   
+def set_trajectory_speed(traj, speed):
+       # Create a new trajectory object
+       new_traj = RobotTrajectory()
+       
+       # Initialize the new trajectory to be the same as the input trajectory
+       new_traj.joint_trajectory = traj.joint_trajectory
+       
+       # Get the number of joints involved
+       n_joints = len(traj.joint_trajectory.joint_names)
+       
+       # Get the number of points on the trajectory
+       n_points = len(traj.joint_trajectory.points)
+        
+       # Store the trajectory points
+       points = list(traj.joint_trajectory.points)
+       
+       # Cycle through all points and joints and scale the time from start,
+       # as well as joint speed and acceleration
+       for i in range(n_points):
+           point = JointTrajectoryPoint()
+           
+           # The joint positions are not scaled so pull them out first
+           point.positions = traj.joint_trajectory.points[i].positions
+
+           # Next, scale the time_from_start for this point
+           point.time_from_start = traj.joint_trajectory.points[i].time_from_start
+           
+           # Initialize the joint velocities for this point
+           point.velocities = [speed] * n_joints
+           
+           # Get the joint accelerations for this point
+           point.accelerations = [speed / 4.0] * n_joints
+        
+           # Store the scaled trajectory point
+           points[i] = point
+
+       # Assign the modified points to the new trajectory
+       new_traj.joint_trajectory.points = points
+
+       # Return the new trajecotry
+       return new_traj
+
 # Main Loop of module
 
 if __name__ == '__main__':
     print("Vegebot_Commander is listening for commands.")
+    set_blade_voltage()
+    blade_cut()
+    blade_release()
     start_moveit()
 
     listener()
