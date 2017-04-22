@@ -11,3 +11,30 @@ vegebot_webserver - Drives the Vegebot HTML UI.
 lettuce_test - Various test scripts that simulate lettuces.
 
 (c) Bio-inspired Robotics Laboratory, Cambridge University. 2017. All Rights Reserved.
+
+DEMO
+====
+
+REAL ROBOT
+
+1. Connect to UR-10 via ethernet and check you can ping UR-10 at 192.168.2.5
+2. On UR-10 touch screen, go to Program Robot > Move > Home and press Auto until robot in upright position
+3. Leave the Home screen (important!)
+4. In first terminal window do roslaunch vegebot_run run.launch
+5. In second window do rosrun vegebot?commander vegebot_commander
+6. Open browser to http://localhost:8000 Model should load.
+7. Click Detect for fixed lettuces
+8. Click Pick on any lettuce
+9. Click Camera Image to read an image off disk and extract lettuces
+10. Can use rosrun image_view image_view image:=/vegebot/lettuce_hypotheses/annotated_images to monitor image
+
+SIMULATION
+
+1. In first terminal window do roslaunch vegebot_run sim.launch
+2. In second window do rosrun vegebot?commander vegebot_commander
+3. Open browser to http://localhost:8000 Model should load.
+4. Click Detect for fixed lettuces
+5. Click Pick on any lettuce
+6. Click Camera Image to read an image off disk and extract lettuces
+7. Can use rosrun image_view image_view image:=/vegebot/lettuce_hypotheses/annotated_images to monitor image
+
