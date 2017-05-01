@@ -82,6 +82,20 @@
 			receiveLettuceHypothesis
 		);
 
+		var statusTopic = new ROSLIB.Topic({
+			ros: ros,
+			name: '/vegebot/status',
+			messageType: 'std_msgs/String'
+		});
+		statusTopic.subscribe(
+			receiveStatus
+		);
+
+		function receiveStatus(message) {
+			var statusMessage = message.data;
+			window.updateVegebotStatus(statusMessage);
+		}
+
 		// Receive an array of Lettuce Hypotheses
 		// Display them in 3D and add or remove from menu
 

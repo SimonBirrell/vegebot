@@ -20,6 +20,7 @@ from geometry_msgs.msg import PoseStamped, Pose
 #import ur_msgs
 
 VEGEBOT_SIMULATION_PARAM = "/vegebot/simulation"
+VEGEBOT_STATUS_TOPIC = "/vegebot/status"
 IS_A_SIMULATION = False
 DISABLE_MOVEMENT = False
 DISABLE_IO = False 
@@ -59,6 +60,7 @@ Display_trajectory_publisher = 0
 Snapshot_publisher = 0
 Next_action = None
 Current_reference_position = []
+Status_publisher = None
 
 # MoveIt routines        
 
@@ -90,11 +92,15 @@ def next_action(params):
             success, status_message, Next_action = action_place()  
         elif Next_action=="release":
             success, status_message, Next_action = action_release()  
-        rospy.loginfo(status_message)    
+        publish_status_message(status_message)    
         Current_reference_position = position         
     else:
         rospy.loginfo("***** Bad position sent from UI *****")
         pospy.loginfo("Cancelling next action.")
+
+def publish_status_message(message):
+        rospy.loginfo(message)
+        Status_publisher.publish(message)
 
 def action_pregrasp(pregrasp_position):
     rospy.loginfo("Executing pregrasp...")
@@ -478,6 +484,9 @@ def prepare_snapshot_publisher():
                                             String,
                                             queue_size=10)
 
+def set_up_status_topic():
+    global Status_publisher         
+    Status_publisher = rospy.Publisher(VEGEBOT_STATUS_TOPIC, String, queue_size=10)
 
 def scale_trajectory_speed(traj, scale):
        # Create a new trajectory object
@@ -573,6 +582,7 @@ def set_trajectory_speed(traj, speed):
 if __name__ == '__main__':
     print("Vegebot_Commander is listening for commands.")
     get_config()
+    set_up_status_topic()
     set_blade_voltage()
     blade_cut()
     blade_release()

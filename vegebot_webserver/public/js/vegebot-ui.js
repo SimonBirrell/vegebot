@@ -48,5 +48,11 @@ function update2DUIWithLettuceHypothesis(lettuceHypothesis) {
 }
 window.Vegebot.update2DUIWithLettuceHypothesis = update2DUIWithLettuceHypothesis;
 
-
+function updateVegebotStatus(message) {
+	console.log("=============================");
+	console.log(message);
+	console.log("=============================");
+	d3.selectAll("#vegebot-status").text(message);
+}
+window.updateVegebotStatus = updateVegebotStatus;
 
