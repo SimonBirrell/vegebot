@@ -181,6 +181,17 @@ function sendNextActionCommand(lettuceId) {
 	sendVegebotCommand('next_action ' + x + ' ' + y + ' ' + z);	
 }
 
+function sendActionCommand(lettuceId) {
+	console.log("Sending Pick Command: " + lettuceId);
+	var lettuceHypothesis = Lettuces[lettuceId],
+		position = lettuceHypothesis.pose.position,
+		x = position.x,
+		y = position.y,
+		z = position.z;
+
+	sendVegebotCommand('action ' + x + ' ' + y + ' ' + z);	
+}
+
 function sendVegebotCommand(commandString) {
 	var command = new ROSLIB.Message({
 		data: commandString

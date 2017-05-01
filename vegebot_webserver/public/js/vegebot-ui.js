@@ -41,6 +41,12 @@ function update2DUIWithLettuceHypothesis(lettuceHypothesis) {
 		.attr('id', buttonId)
 		.text('Next action');	
 
+	menuItemsEnter.append('button')
+		.attr('class', 'pure-button lettuce-pick-button')
+		.attr('onClick', 'action(this.id)')
+		.attr('id', buttonId)
+		.text('Action');	
+
 	menuItems
 		.exit()
 		.remove();	

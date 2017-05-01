@@ -59,6 +59,7 @@ Manipulator = 0
 Display_trajectory_publisher = 0
 Snapshot_publisher = 0
 Next_action = None
+Last_action = None
 Current_reference_position = []
 Status_publisher = None
 
@@ -69,8 +70,13 @@ def pick_test(params):
     move_to(PICK_POSITION, PICK_ORIENTATION)  
     print("== Picked.")
 
+def action(params):
+    global Next_action, Last_action
+    Next_action = Last_action
+    next_action(params)
+
 def next_action(params):
-    global Next_action, Current_reference_position
+    global Next_action, Last_action, Current_reference_position
 
     print("==== Next action triggered ====")   
     position = get_position_from_params(params)
@@ -80,6 +86,7 @@ def next_action(params):
     if (position != None):
         if (Next_action==None) or (Current_reference_position != position):
             Next_action = 'pregrasp'
+        Last_action = Next_action        
         if Next_action=='pregrasp':
             success, status_message, Next_action = action_pregrasp(pregrasp_position)
         elif Next_action=="down":
@@ -477,6 +484,8 @@ def callback(data):
         detect_image(params) 
     elif (params[0]=='next_action'):
         next_action(params) 
+    elif (params[0]=='action'):
+        action(params) 
 
 def prepare_snapshot_publisher():
     global Snapshot_publisher 
