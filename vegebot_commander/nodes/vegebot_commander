@@ -19,6 +19,8 @@ from geometry_msgs.msg import PoseStamped, Pose
 
 #import ur_msgs
 
+VEGEBOT_SIMULATION_PARAM = "/vegebot/simulation"
+IS_A_SIMULATION = False
 DISABLE_MOVEMENT = False
 DISABLE_IO = False 
 
@@ -55,6 +57,8 @@ Scene = 0
 Manipulator = 0
 Display_trajectory_publisher = 0
 Snapshot_publisher = 0
+Next_action = None
+Current_reference_position = []
 
 # MoveIt routines        
 
@@ -62,6 +66,88 @@ def pick_test(params):
     print("Picking test...")
     move_to(PICK_POSITION, PICK_ORIENTATION)  
     print("== Picked.")
+
+def next_action(params):
+    global Next_action, Current_reference_position
+
+    print("==== Next action triggered ====")   
+    position = get_position_from_params(params)
+    pregrasp_position = add_vectors(position, PREGRASP_OFFSET)
+    pregrasp_position = add_vectors(pregrasp_position, TARGET_END_EFFECTOR_OFFSET)
+    target_position = add_vectors(position, TARGET_END_EFFECTOR_OFFSET)
+    if (position != None):
+        if (Next_action==None) or (Current_reference_position != position):
+            Next_action = 'pregrasp'
+        if Next_action=='pregrasp':
+            success, status_message, Next_action = action_pregrasp(pregrasp_position)
+        elif Next_action=="down":
+            success, status_message, Next_action = action_down(target_position)  
+        elif Next_action=="cut":
+            success, status_message, Next_action = action_cut()  
+        elif Next_action=="up":
+            success, status_message, Next_action = action_up(pregrasp_position)  
+        elif Next_action=="place":
+            success, status_message, Next_action = action_place()  
+        elif Next_action=="release":
+            success, status_message, Next_action = action_release()  
+        rospy.loginfo(status_message)    
+        Current_reference_position = position         
+    else:
+        rospy.loginfo("***** Bad position sent from UI *****")
+        pospy.loginfo("Cancelling next action.")
+
+def action_pregrasp(pregrasp_position):
+    rospy.loginfo("Executing pregrasp...")
+    if (reach_to_pregrasp_position(pregrasp_position)):
+        return (True, "Pregrasp succeeded.", "down")
+    else:
+        return (False, "Pregrasp FAILED.", "pregrasp")
+
+def action_down(target_position):
+    rospy.loginfo("Executing down...")
+    if (descend_on_lettuce(target_position)):
+        return (True, "Down succeeded.", "cut")
+    else:
+        return (False, "Down FAILED.", "down")
+
+def action_cut():
+    rospy.loginfo("Executing cut...")
+    if (blade_cut()):
+        return (True, "Cut succeeded.", "up")
+    else:
+        return (False, "Cut FAILED.", "cut")
+
+def action_up(pregrasp_position):
+    rospy.loginfo("Executing up...")
+    if (ascend_from_lettuce(pregrasp_position)):
+        return (True, "Up succeeded.", "place")
+    else:
+        return (False, "Up FAILED.", "up")
+
+def action_place():
+    rospy.loginfo("Executing place...")
+    if (move_to(PLACE_POSITION, PLACE_ORIENTATION)):
+        return (True, "Place succeeded.", "release")
+    else:
+        return (False, "Place FAILED.", "place")
+
+def action_release():
+    rospy.loginfo("Executing release...")
+    if (blade_release()):
+        return (True, "Release succeeded.", "pregrasp")
+    else:
+        return (False, "Release FAILED.", "release")
+
+def get_position_from_params(params):
+    if (len(params)==4):
+        x = float(params[1])
+        y = float(params[2])
+        z = float(params[3])
+        position = [x, y, z]
+        position = offset_end_effector_from_lettuce(position)
+        return position
+    else:
+        return None
 
 def pick(params):
     print("Picking...")
@@ -88,7 +174,7 @@ def offset_end_effector_from_lettuce(position):
 def park(params):
     print("== Parking...") 
     move_to(PARK_POSITION, PARK_ORIENTATION)  
-    blade_cut()
+    #blade_cut()
     timer.sleep(5)
     blade_release()
     print("== Parked.")
@@ -310,11 +396,13 @@ def blade_cut():
     print("== ACTIVATING BLADE!!!")
     blade_IO(UR10_BLADE_PIN8, 0)
     blade_IO(UR10_BLADE_PIN9, 1)
+    return True
 
 def blade_release():    
     print("== RETRACTING BLADE!!!")
     blade_IO(UR10_BLADE_PIN8, 1)
     blade_IO(UR10_BLADE_PIN9, 0)
+    return True
 
 def blade_IO(pin, voltage_level):
     print("BladeIO Pin " + str(pin) + " to level " + str(voltage_level))
@@ -344,7 +432,14 @@ def set_blade_voltage():
     service_proxy = rospy.ServiceProxy('/ur_driver/set_io', io_msg)
     service_proxy(4, 8, 12)
 
-# Communications        
+# Communications   
+
+def get_config():
+    global IS_A_SIMULATION, DISABLE_MOVEMENT, DISABLE_IO
+
+    IS_A_SIMULATION = rospy.get_param(VEGEBOT_SIMULATION_PARAM)   
+    if (IS_A_SIMULATION):
+        DISABLE_IO = True
     
 def listener():
     print("== Setting up listener...")
@@ -374,6 +469,8 @@ def callback(data):
         detect(params) 
     elif (params[0]=='detect_image'):
         detect_image(params) 
+    elif (params[0]=='next_action'):
+        next_action(params) 
 
 def prepare_snapshot_publisher():
     global Snapshot_publisher 
@@ -475,6 +572,7 @@ def set_trajectory_speed(traj, speed):
 
 if __name__ == '__main__':
     print("Vegebot_Commander is listening for commands.")
+    get_config()
     set_blade_voltage()
     blade_cut()
     blade_release()

@@ -192,6 +192,17 @@
         }
       }
       
+      function nextAction(id) {
+        var confirmed = confirm("Confirm to send next action to lettuce");
+        if (confirmed) {
+          console.log("Clicked button " + id);
+          var lettuceId = id.substring(12, 100);
+          sendNextActionCommand(lettuceId);
+        } else {
+          console.log("Not confirmed.");
+        }
+      }
+      
       </script>
 </head>
 <body onload="init()">
