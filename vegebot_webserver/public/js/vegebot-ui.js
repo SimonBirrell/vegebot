@@ -54,6 +54,24 @@ function update2DUIWithLettuceHypothesis(lettuceHypothesis) {
 }
 window.Vegebot.update2DUIWithLettuceHypothesis = update2DUIWithLettuceHypothesis;
 
+function updateParameterList(parameterList) {
+	var parameterItems = d3.select('#parameters')
+		.selectAll('div')
+		.data(parameterList);
+
+	var parameterItemsEnter = parameterItems
+		.enter()
+		.append('div')
+		.attr('class', 'pure-u-1 pure-u-md-1-2 parameter-item');
+
+	parameterItemsEnter.append('span')
+		.text(function(d){
+			return d.name;
+		});	
+
+}
+window.Vegebot.updateParameterList = updateParameterList;
+
 function updateVegebotStatus(message) {
 	console.log("=============================");
 	console.log(message);

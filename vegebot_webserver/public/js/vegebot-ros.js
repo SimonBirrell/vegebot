@@ -91,6 +91,8 @@
 			receiveStatus
 		);
 
+		requestParameters();
+
 		function receiveStatus(message) {
 			var statusMessage = message.data;
 			window.updateVegebotStatus(statusMessage);
@@ -157,7 +159,43 @@
 			update2DUIWithLettuceHypothesis(0);
 		}
 
+		function paramBelongsToVegebot(param) {
+			return (param.substring(0,9)=="/vegebot/");
+		}
+
+		function requestParameters() {
+			var filteredRosParams = [],
+				rosParameters = [];
+			//sendVegebotCommand('list_parameters');
+			ros.getParams(function(params) {
+    			filteredRosParams = params.filter(paramBelongsToVegebot);
+    			console.log("Parameters:");
+    			console.log(filteredRosParams);
+    			for (var i=0; i<filteredRosParams.length; i++) {
+    				var parameter_name = filteredRosParams[i];
+    				var param = new ROSLIB.Param({
+    					ros : ros,
+    					name : parameter_name
+  					});
+  					var parameterItem = {
+  						param: param,
+    					name: parameter_name,
+    					value: null
+  					};
+  					rosParameters.push(parameterItem);
+					param.get(function(value){
+						parameterItem.value = value;
+					});
+    			}
+  			});	
+  			window.Vegebot.rosParameters = rosParameters;
+  			setTimeout(function() {
+  				window.Vegebot.updateParameterList(rosParameters);
+  			}, 5000);
+		}
+
 }
+
 
 function sendPickCommand(lettuceId) {
 	console.log("Sending Pick Command: " + lettuceId);

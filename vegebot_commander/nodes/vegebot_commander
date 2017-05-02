@@ -486,6 +486,8 @@ def callback(data):
         next_action(params) 
     elif (params[0]=='action'):
         action(params) 
+    # elif (params[0]=='list_parameters'):
+    #     list_parameters() 
 
 def prepare_snapshot_publisher():
     global Snapshot_publisher 
@@ -585,6 +587,13 @@ def set_trajectory_speed(traj, speed):
 
        # Return the new trajecotry
        return new_traj
+
+# def list_parameters():
+#     parameter_names = rospy.get_param_names()
+#     filtered_parameter_names = [x for x in parameter_names if x[:9] == '/vegebot/']
+#     print filtered_parameter_names
+    
+
 
 # Main Loop of module
 
