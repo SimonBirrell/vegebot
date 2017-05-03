@@ -64,10 +64,36 @@ function updateParameterList(parameterList) {
 		.append('div')
 		.attr('class', 'pure-u-1 pure-u-md-1-2 parameter-item');
 
-	parameterItemsEnter.append('span')
+	var forms = parameterItemsEnter.append('form')
+			.attr('class', "pure-form")
+			.attr('id', function(d){
+				return d.id;
+			})
+			.attr('onsubmit', 'return submitParameterForm(event);')
+			.attr('action', '#');
+
+	var fieldsets = forms.append('fieldset');		
+
+	fieldsets.append('label')
+		.attr('for', function(d){
+			return d.id;
+		})
 		.text(function(d){
 			return d.name;
-		});	
+		});
+
+	fieldsets.append('input')
+		.attr('type', 'text')
+		.attr('name', function(d){
+			return d.id;
+		})
+		.attr('onclick', 'foo');
+
+	fieldsets.append('input')
+		.attr('class', 'pure-button')
+		.attr('type', 'submit')
+		.attr('value', 'Submit')
+		.text('update');	
 
 }
 window.Vegebot.updateParameterList = updateParameterList;
@@ -80,3 +106,11 @@ function updateVegebotStatus(message) {
 }
 window.updateVegebotStatus = updateVegebotStatus;
 
+function submitParameterForm(e) {
+	var formId = e.target.id,
+		fieldName = formId;
+	console.log(formId);
+	var value = document.getElementById(formId+'['+fieldName+"]").value;
+	console.log(value);
+	return true;
+}

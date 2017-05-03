@@ -172,7 +172,8 @@
     			console.log("Parameters:");
     			console.log(filteredRosParams);
     			for (var i=0; i<filteredRosParams.length; i++) {
-    				var parameter_name = filteredRosParams[i];
+    				var parameter_name = filteredRosParams[i],
+    					parameter_id = parameterNameToId(parameter_name);
     				var param = new ROSLIB.Param({
     					ros : ros,
     					name : parameter_name
@@ -180,6 +181,7 @@
   					var parameterItem = {
   						param: param,
     					name: parameter_name,
+    					id: parameter_id,
     					value: null
   					};
   					rosParameters.push(parameterItem);
@@ -193,6 +195,17 @@
   				window.Vegebot.updateParameterList(rosParameters);
   			}, 5000);
 		}
+
+		function parameterNameToId(name) {
+			var regex = /\//gi;
+
+			return name.replace(regex, 'slash-');
+		}
+
+		// function updateField(that) {
+		// 	console.log(that);
+		// }
+		// window.Vegebot.updateField = updateField;
 
 }
 
