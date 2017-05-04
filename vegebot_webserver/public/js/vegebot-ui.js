@@ -54,10 +54,10 @@ function update2DUIWithLettuceHypothesis(lettuceHypothesis) {
 }
 window.Vegebot.update2DUIWithLettuceHypothesis = update2DUIWithLettuceHypothesis;
 
-function updateParameterList(parameterList) {
+function updateParameterList() {
 	var parameterItems = d3.select('#parameters')
 		.selectAll('div')
-		.data(parameterList);
+		.data(window.Vegebot.rosParameters);
 
 	var parameterItemsEnter = parameterItems
 		.enter()
@@ -84,17 +84,31 @@ function updateParameterList(parameterList) {
 
 	fieldsets.append('input')
 		.attr('type', 'text')
+		.attr('id', function(d){
+			return formToFieldId(d.id);
+		})
 		.attr('name', function(d){
 			return d.id;
 		})
-		.attr('onclick', 'foo');
+//		.attr('value', function(d){
+//			return d.value;
+//		})
+		;
 
 	fieldsets.append('input')
 		.attr('class', 'pure-button')
 		.attr('type', 'submit')
 		.attr('value', 'Submit')
-		.text('update');	
+		.text('update');
 
+	// Update any values if they change on the server
+	parameterItems.select('form')
+		.select('input')
+		.attr('value', function(d){
+			console.log("setting value in UI to");
+			console.log(d.value);
+			return d.value;
+		});
 }
 window.Vegebot.updateParameterList = updateParameterList;
 
@@ -108,9 +122,13 @@ window.updateVegebotStatus = updateVegebotStatus;
 
 function submitParameterForm(e) {
 	var formId = e.target.id,
-		fieldName = formId;
-	console.log(formId);
-	var value = document.getElementById(formId+'['+fieldName+"]").value;
-	console.log(value);
-	return true;
+		fieldId = formToFieldId(formId),
+		value = document.getElementById(fieldId).value;
+	window.Vegebot.submitParameter(formId, value);
+
+	return false;
+}
+
+function formToFieldId(formId) {
+	return formId + '-input';
 }

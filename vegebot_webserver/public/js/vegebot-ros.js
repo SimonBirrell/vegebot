@@ -192,8 +192,17 @@
   			});	
   			window.Vegebot.rosParameters = rosParameters;
   			setTimeout(function() {
-  				window.Vegebot.updateParameterList(rosParameters);
-  			}, 5000);
+  				updateParametersAndSetNextTimer();
+  			}, 1000);
+		}
+		window.Vegebot.requestParameters = requestParameters;
+
+		function updateParametersAndSetNextTimer() {
+  			window.Vegebot.updateParameterList();
+  			// Update values from server every 5 seconds
+			setTimeout(function() {
+  				window.Vegebot.requestParameters();
+  			}, 1000);			
 		}
 
 		function parameterNameToId(name) {
@@ -202,13 +211,46 @@
 			return name.replace(regex, 'slash-');
 		}
 
-		// function updateField(that) {
-		// 	console.log(that);
-		// }
-		// window.Vegebot.updateField = updateField;
+		function idToParameterName(id) {
+			var regex = /slash-/gi;
+
+			return id.replace(regex, '/');
+		}
+
+		function submitParameter(id, value) {
+			var parameterName = idToParameterName(id);
+
+		 	console.log("Changing parameter: " + parameterName + " to " + value);
+
+		 	value = recastValue(value);
+			var matchingParameters = window.Vegebot.rosParameters.filter(function(obj){
+				return obj.parameter_name = id;
+			});		
+			if (matchingParameters.length>0) {
+				var param = matchingParameters[0].param;
+				param.set(value);
+				console.log("ROS parameter set");
+			} else {
+				console.log("No matching parameter: " + id);
+				console.log(window.Vegebot.rosParameters);
+			}	
+		}
+		window.Vegebot.submitParameter = submitParameter;
 
 }
 
+// http://stackoverflow.com/questions/5778020/check-whether-an-input-string-contains-number
+function isNumeric(n) {
+  return !isNaN(parseFloat(n)) && isFinite(n);
+}
+
+function recastValue(value) {
+	value = value.trim();
+	if (isNumeric(value)) value=parseFloat(value);
+	if (value=="true") value=true;
+	if (value=="false") value=false;
+	return value;
+}
 
 function sendPickCommand(lettuceId) {
 	console.log("Sending Pick Command: " + lettuceId);
