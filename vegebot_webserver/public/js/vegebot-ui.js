@@ -90,10 +90,9 @@ function updateParameterList() {
 		.attr('name', function(d){
 			return d.id;
 		})
-//		.attr('value', function(d){
-//			return d.value;
-//		})
-		;
+		.attr('value', function(d){
+			return d.value;
+		});
 
 	fieldsets.append('input')
 		.attr('class', 'pure-button')
@@ -102,6 +101,7 @@ function updateParameterList() {
 		.text('update');
 
 	// Update any values if they change on the server
+	// NOTE TODO: This always updates the DOM, doesn-t always update visible page
 	parameterItems.select('form')
 		.select('input')
 		.attr('value', function(d){
