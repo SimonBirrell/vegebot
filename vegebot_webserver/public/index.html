@@ -94,6 +94,13 @@
           -ms-transform: rotate(-45deg);
           transform: rotate(-45deg);
       }
+
+      .status {
+        margin: 4px;
+        padding: 4px;
+        background-color: rgb(240,240,240);
+        color: rgb(20,200,20);
+      }
       
       @media (max-width: 47.999em) {
       
@@ -192,18 +199,50 @@
         }
       }
       
+      function nextAction(id) {
+        var confirmed = confirm("Confirm to send next action to lettuce");
+        if (confirmed) {
+          console.log("Clicked button " + id);
+          var lettuceId = id.substring(12, 100);
+          sendNextActionCommand(lettuceId);
+        } else {
+          console.log("Not confirmed.");
+        }
+      }
+      
+      function action(id) {
+        var confirmed = confirm("Confirm to send next action to lettuce");
+        if (confirmed) {
+          console.log("Clicked button " + id);
+          var lettuceId = id.substring(12, 100);
+          sendActionCommand(lettuceId);
+        } else {
+          console.log("Not confirmed.");
+        }
+      }
+
+
+      
       </script>
 </head>
 <body onload="init()">
-	<div>
+	<div class='pure-g'>
 		<div id='urdf' class='pure-u-1-1'></div>
-		<div>
+		<div class="pure-u-1-1">
 			<button onclick="sendVegebotCommand('park');" class="pure-button">Park</button>
       <button onclick="sendVegebotCommand('detect');" class="pure-button">Detect</button>
       <button onclick="sendVegebotCommand('detect_image');" class="pure-button">Detect Image</button>
       <button onclick="sendVegebotCommand('detect_camera');" class="pure-button">Detect Camera</button>
 		</div>
+    <div class="pure-u-1-1 status">
+      <span id="vegebot-status">&nbsp;</span>
+    </div>
     <div id="lettuce-menu" class='pure-g'>
+    </div>
+    <div class="pure-u-1-1">
+      <h2>Parameters</h2>
+    </div>
+    <div id="parameters" class="pure-u-1-1">
     </div>
 	</div>
 </body>
