@@ -3,12 +3,14 @@
 	<param name="vegebot/simulation" value="true" />
 	<param name="/move_group/trajectory_execution/allowed_start_tolerance" value="0.0" />
  
- <!--
+
 	<node pkg="vegebot_commander" name="vegebot_commander" type="vegebot_commander" output="screen">
 	</node>
--->
-	<node pkg="lettuce_test" name="test" type="test">
+
+ <!--
+ 	<node pkg="lettuce_test" name="test" type="test">
 	</node>
+-->
 
 	<node pkg="lettuce_detect" name="lettuce_detector" type="lettuce_detector">
 	</node>
@@ -35,6 +37,14 @@
 		<arg name="sim" value="true" />
 		<arg name="limited" value="false" />
 	</include>
+
+	<!-- USB Camera -->
+	<include file="$(find usb_cam)/launch/usb_cam-test.launch">
+	</include>
+	<node pkg="image_view" name="image_view_lettuce" type="image_view">
+		<arg name="image" value="/vegebot/lettuce_video/raw_images" />
+	</node>
+
 
 <!--
 	<include file="$(find ur10_moveit_config)/launch/moveit_rviz.launch">
