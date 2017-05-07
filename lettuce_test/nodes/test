@@ -46,7 +46,7 @@ def publish_jpeg_from_file(topic_name, filename):
 	global OpenCVBridge
 
 	image = cv2.imread(filename)
-	image_message = OpenCVBridge.cv2_to_imgmsg(image)
+	image_message = OpenCVBridge.cv2_to_imgmsg(image, encoding="bgr8")
 	Lettuce_images_raw_topic.publish(image_message)
 	print("Image published!")
 
@@ -102,10 +102,10 @@ def publish_camera_image():
 
 def convert_image_rgb(image):
 	global OpenCVBridge
-	#cv_image = OpenCVBridge.imgmsg_to_cv2(image, desired_encoding='passthrough')
-	#new_image = OpenCVBridge.cv2_to_imgmsg(cv_image, encoding='passthrough')
-	#return new_image
-	return image
+	cv_image = OpenCVBridge.imgmsg_to_cv2(image, desired_encoding='bgr8')
+	new_image = OpenCVBridge.cv2_to_imgmsg(cv_image, encoding='bgr8')
+	return new_image
+	#return image
 
 def publish_fake_lettuces():	
 	global Last_snapshot
