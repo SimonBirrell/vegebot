@@ -35,17 +35,26 @@ function update2DUIWithLettuceHypothesis(lettuceHypothesis) {
 		.attr('id', buttonId)
 		.text('Full Pick');	
 
-	menuItemsEnter.append('button')
-		.attr('class', 'pure-button lettuce-pick-button')
-		.attr('onClick', 'nextAction(this.id)')
-		.attr('id', buttonId)
-		.text('Next action');	
+	var id = lettuceHypothesis.lettuce_hypothesis_id;
+	addButtons(menuItemsEnter, 'pick', 'all', id);	
+	addButtons(menuItemsEnter, 'release', 'rel', id);	
+	addButtons(menuItemsEnter, 'place', 'pla', id);	
+	addButtons(menuItemsEnter, 'up', 'up', id);	
+	addButtons(menuItemsEnter, 'cut', 'cut', id);	
+	addButtons(menuItemsEnter, 'down', 'dwn', id);	
+	addButtons(menuItemsEnter, 'pregrasp', 'pre', id);	
 
-	menuItemsEnter.append('button')
-		.attr('class', 'pure-button lettuce-pick-button')
-		.attr('onClick', 'action(this.id)')
-		.attr('id', buttonId)
-		.text('Action');	
+	// menuItemsEnter.append('button')
+	// 	.attr('class', 'pure-button lettuce-pick-button')
+	// 	.attr('onClick', 'nextAction(this.id)')
+	// 	.attr('id', buttonId)
+	// 	.text('Next action');	
+
+	// menuItemsEnter.append('button')
+	// 	.attr('class', 'pure-button lettuce-pick-button')
+	// 	.attr('onClick', 'action(this.id)')
+	// 	.attr('id', buttonId)
+	// 	.text('Action');	
 
 	menuItems
 		.exit()
@@ -53,6 +62,16 @@ function update2DUIWithLettuceHypothesis(lettuceHypothesis) {
 
 }
 window.Vegebot.update2DUIWithLettuceHypothesis = update2DUIWithLettuceHypothesis;
+
+function addButtons(containers, command, label, lettuceHypothesisId) {
+	var buttonId = 'button-' + command + '-' + lettuceHypothesisId;
+
+	containers.append('button')
+		.attr('class', 'pure-button lettuce-pick-button')
+		.attr('onClick', "doAction(this.id, '" + command + "');")
+		.attr('id', buttonId)
+		.text(label);	
+}
 
 function updateParameterList() {
 	var parameterItems = d3.select('#parameters')
@@ -105,8 +124,8 @@ function updateParameterList() {
 	parameterItems.select('form')
 		.select('input')
 		.attr('value', function(d){
-			console.log("setting value in UI to");
-			console.log(d.value);
+			//console.log("setting value in UI to");
+			//console.log(d.value);
 			return d.value;
 		});
 }

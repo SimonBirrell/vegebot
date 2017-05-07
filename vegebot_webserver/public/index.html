@@ -188,6 +188,20 @@
       window.addEventListener(WINDOW_CHANGE_EVENT, closeMenu);
       })(this, this.document);
 
+      function doAction(id, command) {
+        console.log("doAction");
+        console.log(id);
+        console.log(command);
+        var confirmed = confirm("Confirm " + command);
+        if (confirmed) {
+          console.log("Clicked button " + command + ' ' + id);
+          var lettuceId = id.split('-').pop();
+          sendGenericCommand(lettuceId, command);
+        } else {
+          console.log("Not confirmed.");
+        }
+      }      
+
       function pickLettuce(id) {
         var confirmed = confirm("Confirm to pick lettuce");
         if (confirmed) {

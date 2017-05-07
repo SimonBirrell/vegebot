@@ -169,8 +169,8 @@
 			//sendVegebotCommand('list_parameters');
 			ros.getParams(function(params) {
     			filteredRosParams = params.filter(paramBelongsToVegebot);
-    			console.log("Parameters:");
-    			console.log(filteredRosParams);
+    			//console.log("Parameters:");
+    			//console.log(filteredRosParams);
     			for (var i=0; i<filteredRosParams.length; i++) {
     				var parameter_name = filteredRosParams[i],
     					parameter_id = parameterNameToId(parameter_name);
@@ -250,6 +250,17 @@ function recastValue(value) {
 	if (value=="true") value=true;
 	if (value=="false") value=false;
 	return value;
+}
+
+function sendGenericCommand(lettuceId, command) {
+	console.log("Sending Generic Command: " + command + ' to ' + lettuceId);
+	var lettuceHypothesis = Lettuces[lettuceId],
+		position = lettuceHypothesis.pose.position,
+		x = position.x,
+		y = position.y,
+		z = position.z;
+
+	sendVegebotCommand(command + ' ' + x + ' ' + y + ' ' + z);	
 }
 
 function sendPickCommand(lettuceId) {
