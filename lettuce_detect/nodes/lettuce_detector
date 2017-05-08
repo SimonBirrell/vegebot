@@ -39,6 +39,9 @@ FIELD_WIDTH_ANGLE = 60
 FIELD_PIXEL_WIDTH = 0
 FIELD_PIXEL_HEIGHT = 0
 
+FIELD_WIDTH_ANGLE_PARAM = '/vegebot/camera/field_width_angle'
+FIELD_HEIGHT_ANGLE_PARAM = '/vegebot/camera/field_height_angle'
+
 Lettuce_hypothesis_topic = None
 Lettuce_images_raw_topic = None
 Lettuce_images_annotated_topic = None
@@ -59,9 +62,19 @@ def subscribe_to_lettuce_images_raw_topic(callback):
                            Image,
                            callback)
 
+def get_camera_params():
+    global FIELD_WIDTH_ANGLE, FIELD_WIDTH_HEIGHT, FIELD_WIDTH_ANGLE_PARAM, FIELD_HEIGHT_ANGLE_PARAM
+    FIELD_WIDTH_ANGLE = rospy.get_param(FIELD_WIDTH_ANGLE_PARAM)    
+    FIELD_WIDTH_HEIGHT = rospy.get_param(FIELD_HEIGHT_ANGLE_PARAM)    
+    rospy.loginfo("Read PARAM")
+    rospy.loginfo(FIELD_PIXEL_WIDTH)
+
 def process_incoming_image(message):
-    global FIELD_PIXEL_WIDTH, FIELD_PIXEL_HEIGHT
+    global FIELD_PIXEL_WIDTH, FIELD_PIXEL_HEIGHT, FIELD_WIDTH_ANGLE, FIELD_HEIGHT_ANGLE
     print("Received image for detection!")
+    get_camera_params()
+    rospy.loginfo("Now it-s")
+    rospy.loginfo(FIELD_WIDTH_ANGLE)
     image = message
     cv2_image = image_message_to_cv2_image(image)
     height, width, channels = cv2_image.shape
@@ -261,6 +274,11 @@ class LettuceHypothesisComplete:
 ########################### 3D Geometry ##########################################
 
 def point_2D_to_point_3D(x,y):
+    global FIELD_WIDTH_ANGLE, FIELD_HEIGHT_ANGLE
+    rospy.loginfo("===========")
+    rospy.loginfo(FIELD_WIDTH_ANGLE)
+    rospy.loginfo("===========")
+
     camera_transform = get_camera_to_world_transform()
     distance_to_floor = camera_transform.transform.translation.z
     field_width = 2.0 * distance_to_floor * math.tan(math.radians(FIELD_WIDTH_ANGLE) / 2.0)
@@ -277,11 +295,16 @@ def point_2D_to_point_3D(x,y):
     return point_in_world
 
 def camera_field_polygon_in_world():
+    global FIELD_WIDTH_ANGLE, FIELD_HEIGHT_ANGLE
+    rospy.loginfo("$$$$$$$$$$$$$$$$$$")
+    rospy.loginfo(FIELD_WIDTH_ANGLE)
+    rospy.loginfo("$$$$$$$$$$$$$$$$$$")
+    
     camera_transform = get_camera_to_world_transform()
     distance_to_floor = 0 - camera_transform.transform.translation.z
-    field_width = 2.0 * distance_to_floor * math.tan(math.radians(FIELD_WIDTH_ANGLE) / 2.0)
+    field_width = 2.0 * distance_to_floor * math.tan(math.radians(FIELD_WIDTH_ANGLE / 2.0))
     half_field_width = field_width / 2.0
-    field_height = 2.0 * distance_to_floor * math.tan(math.radians(FIELD_HEIGHT_ANGLE) / 2.0)
+    field_height = 2.0 * distance_to_floor * math.tan(math.radians(FIELD_HEIGHT_ANGLE / 2.0))
     half_field_height = field_height / 2.0
 
     top_left_world = transformed_point(distance_to_floor, half_field_width, half_field_height, camera_transform)
@@ -310,11 +333,16 @@ def points2D_to_distance3D(x1,y1,x2,y2):
                          (point1.point.z - point2.point.z)**2)
     return distance    
 
+def initialize_camera_params():
+    rospy.set_param(FIELD_WIDTH_ANGLE_PARAM, FIELD_WIDTH_ANGLE)
+    rospy.set_param(FIELD_HEIGHT_ANGLE_PARAM, FIELD_HEIGHT_ANGLE)
+
 
 ##################################################################################
 
 if __name__ == '__main__':
     print("Launching lettuce detector...")
+    initialize_camera_params()
     rospy.init_node(NODE_NAME, anonymous=True)
     subscribe_to_transforms()
     set_up_opencv()
