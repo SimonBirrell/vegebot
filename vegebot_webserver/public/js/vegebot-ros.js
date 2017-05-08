@@ -209,6 +209,7 @@
 				if (param.name==name) {
 					param.value = value;
 					console.log("Set " + name + " to " + value + " in dynamic callback");
+					return;
 				}
 			}
 			console.log("ERROR: Couldn't find param " + name + " in:");
@@ -243,15 +244,19 @@
 
 		 	value = recastValue(value);
 			var matchingParameters = window.Vegebot.rosParameters.filter(function(obj){
-				console.log("*** " + obj.parameter_name);
-				return obj.parameter_name = id;
+				console.log("*** " + obj.name);
+				return obj.name == parameterName;
 			});		
 			if (matchingParameters.length>0) {
+				console.log("Matching params:");
+				console.log(matchingParameters.length);
 				var param = matchingParameters[0].param;
 				param.set(value);
+				console.log(param);
 				console.log("ROS parameter set");
+				console.log("****************");
 			} else {
-				console.log("No matching parameter: " + id);
+				console.log("No matching parameter: " + parameterName);
 				console.log(window.Vegebot.rosParameters);
 			}	
 		}

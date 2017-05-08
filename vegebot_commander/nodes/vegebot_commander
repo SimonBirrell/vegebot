@@ -414,16 +414,16 @@ def detect_camera(params):
     trigger_camera_snapshot()
 
 def reload_scan_position():
-    x = rospy.get_param(SCAN_POSITION_PARAM + '_x')
-    y = rospy.get_param(SCAN_POSITION_PARAM + '_y')
-    z = rospy.get_param(SCAN_POSITION_PARAM + '_z')
+    x = rospy.get_param(SCAN_POSITION_PARAM + '/x')
+    y = rospy.get_param(SCAN_POSITION_PARAM + '/y')
+    z = rospy.get_param(SCAN_POSITION_PARAM + '/z')
      
     return ([x, y, z], SCAN_ORIENTATION)    
 
 def initialize_scan_position():
-    rospy.set_param(SCAN_POSITION_PARAM + '_x', SCAN_POSITION[0])
-    rospy.set_param(SCAN_POSITION_PARAM + '_y', SCAN_POSITION[1])
-    rospy.set_param(SCAN_POSITION_PARAM + '_z', SCAN_POSITION[2])
+    rospy.set_param(SCAN_POSITION_PARAM + '/x', SCAN_POSITION[0])
+    rospy.set_param(SCAN_POSITION_PARAM + '/y', SCAN_POSITION[1])
+    rospy.set_param(SCAN_POSITION_PARAM + '/z', SCAN_POSITION[2])
 
 def trigger_fake_image_snapshot():
     print("Triggering fake image snapshot...")
