@@ -2,10 +2,10 @@
 	<!-- Overall parameters -->
 	<param name="vegebot/simulation" value="false" />
 	<param name="/move_group/trajectory_execution/allowed_start_tolerance" value="0.0" />
-
+<!--
 	<node pkg="vegebot_commander" name="vegebot_commander" type="vegebot_commander">
 	</node>
-		
+-->		
 	<node pkg="lettuce_test" name="test" type="test">
 	</node>
 
