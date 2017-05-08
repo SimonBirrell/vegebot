@@ -3,10 +3,8 @@
 	<param name="vegebot/simulation" value="false" />
 	<param name="/move_group/trajectory_execution/allowed_start_tolerance" value="0.0" />
 
-<!--
 	<node pkg="vegebot_commander" name="vegebot_commander" type="vegebot_commander">
 	</node>
--->
 		
 	<node pkg="lettuce_test" name="test" type="test">
 	</node>
@@ -30,18 +28,19 @@
 	<include file="$(find vegebot_run)/launch/vegebot_bringup.launch">
 		<arg name="limited" value="false" />
 		<arg name="robot_ip" value="192.168.2.5" />
+		
 	</include>
-
-    <!--
-	<include file="$(find ur10_moveit_config)/launch/ur10_moveit_planning_execution.launch">
-		<arg name="sim" value="true" />
-		<arg name="limited" value="false" />
-	</include>
--->
 	<include file="$(find vegebot_run)/launch/vegebot_moveit_planning_execution.launch">
 		<arg name="sim" value="false" />
 		<arg name="limited" value="false" />
 	</include>
+
+	<!-- USB Camera -->
+	<include file="$(find usb_cam)/launch/usb_cam-test.launch">
+	</include>
+	<node pkg="image_view" name="raw_lettuce" type="image_view" args="image:=/vegebot/lettuce_video/raw_images" />
+	<node pkg="image_view" name="annotated_lettuce" type="image_view" args="image:=/vegebot/lettuce_hypotheses/annotated_images" />
+
 	<!--
 	<include file="$(find ur10_moveit_config)/launch/moveit_rviz.launch">
 		<arg name="config" value="true" />

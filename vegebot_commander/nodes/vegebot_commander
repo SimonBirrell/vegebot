@@ -196,7 +196,7 @@ def park(params):
     print("== Parking...") 
     move_to(PARK_POSITION, PARK_ORIENTATION)  
     #blade_cut()
-    timer.sleep(5)
+    #timer.sleep(5)
     blade_release()
     print("== Parked.")
 

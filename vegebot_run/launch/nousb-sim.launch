@@ -3,7 +3,6 @@
 	<param name="vegebot/simulation" value="true" />
 	<param name="/move_group/trajectory_execution/allowed_start_tolerance" value="0.0" />
  
-
 	<node pkg="vegebot_commander" name="vegebot_commander" type="vegebot_commander" output="screen">
 	</node>
 
@@ -38,8 +37,7 @@
 
 	<!-- USB Camera
 	<include file="$(find usb_cam)/launch/usb_cam-test.launch">
-	</include>
-	-->
+	</include>-->
 	<node pkg="image_view" name="raw_lettuce" type="image_view" args="image:=/vegebot/lettuce_video/raw_images" />
 	<node pkg="image_view" name="annotated_lettuce" type="image_view" args="image:=/vegebot/lettuce_hypotheses/annotated_images" />
 
