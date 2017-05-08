@@ -75,6 +75,13 @@ def action(params):
     Next_action = Last_action
     next_action(params)
 
+def get_positions_from_params(params):
+    position = get_position_from_params(params)
+    pregrasp_position = add_vectors(position, PREGRASP_OFFSET)
+    pregrasp_position = add_vectors(pregrasp_position, TARGET_END_EFFECTOR_OFFSET)
+    target_position = add_vectors(position, TARGET_END_EFFECTOR_OFFSET)
+    return (pregrasp_position, target_position)
+
 def next_action(params):
     global Next_action, Last_action, Current_reference_position
 
@@ -482,22 +489,38 @@ def callback(data):
     print
     rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
     params = data.data.split()
-    if (params[0]=='pick_test'):
+    command = params[0]
+    if (command=='pick_test'):
         pick_test(params)
-    elif (params[0]=='park'):
+    elif (command=='park'):
         park(params)
-    elif (params[0]=='pick'):
+    elif (command=='pick'):
         pick(params) 
-    elif (params[0]=='detect'):
+    elif (command=='detect'):
         detect(params) 
-    elif (params[0]=='detect_image'):
+    elif (command=='detect_image'):
         detect_image(params) 
-    elif (params[0]=='detect_camera'):
+    elif (command=='detect_camera'):
         detect_camera(params) 
-    elif (params[0]=='next_action'):
+    elif (command=='next_action'):
         next_action(params) 
-    elif (params[0]=='action'):
+    elif (command=='action'):
         action(params) 
+    elif (command=='pregrasp'):
+        pregrasp_position, target_position = get_positions_from_params(params)
+        action_pregrasp(pregrasp_position) 
+    elif (command=='down'):
+        pregrasp_position, target_position = get_positions_from_params(params)
+        action_down(target_position) 
+    elif (command=='cut'):
+        action_cut() 
+    elif (command=='up'):
+        pregrasp_position, target_position = get_positions_from_params(params)
+        action_up(pregrasp_position) 
+    elif (command=='place'):
+        action_place() 
+    elif (command=='release'):
+        action_release() 
 
 def prepare_snapshot_publisher():
     global Snapshot_publisher 

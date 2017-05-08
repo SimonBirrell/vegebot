@@ -28,12 +28,11 @@ function update2DUIWithLettuceHypothesis(lettuceHypothesis) {
 
 	var buttonId = 'button-pick-' + lettuceHypothesis.lettuce_hypothesis_id;
 
-
-	menuItemsEnter.append('button')
-		.attr('class', 'pure-button lettuce-pick-button')
-		.attr('onClick', 'pickLettuce(this.id)')
-		.attr('id', buttonId)
-		.text('Full Pick');	
+	// menuItemsEnter.append('button')
+	// 	.attr('class', 'pure-button lettuce-pick-button')
+	// 	.attr('onClick', 'pickLettuce(this.id)')
+	// 	.attr('id', buttonId)
+	// 	.text('Full Pick');	
 
 	var id = lettuceHypothesis.lettuce_hypothesis_id;
 	addButtons(menuItemsEnter, 'pick', 'all', id);	
