@@ -169,11 +169,12 @@
 			//sendVegebotCommand('list_parameters');
 			ros.getParams(function(params) {
     			filteredRosParams = params.filter(paramBelongsToVegebot);
-    			//console.log("Parameters:");
-    			//console.log(filteredRosParams);
+    			console.log("Parameters:");
+    			console.log(filteredRosParams);
     			for (var i=0; i<filteredRosParams.length; i++) {
     				var parameter_name = filteredRosParams[i],
     					parameter_id = parameterNameToId(parameter_name);
+    				console.log("-- " + parameter_name);
     				var param = new ROSLIB.Param({
     					ros : ros,
     					name : parameter_name
@@ -185,9 +186,7 @@
     					value: null
   					};
   					rosParameters.push(parameterItem);
-					param.get(function(value){
-						parameterItem.value = value;
-					});
+					param.get(generateGetParamCallbackFunction(parameter_name));
     			}
   			});	
   			window.Vegebot.rosParameters = rosParameters;
@@ -196,6 +195,26 @@
   			}, 1000);
 		}
 		window.Vegebot.requestParameters = requestParameters;
+
+		function generateGetParamCallbackFunction(parameter_name) {
+			return Function("value","window.Vegebot.setParamCallback('" + parameter_name + "', value);")
+		}
+
+		function setParamCallback(name, value) {
+			console.log("Callback");
+			console.log(name);
+			console.log(value);
+			for (var i=0; i<window.Vegebot.rosParameters.length; i++) {
+				var param = window.Vegebot.rosParameters[i];
+				if (param.name==name) {
+					param.value = value;
+					console.log("Set " + name + " to " + value + " in dynamic callback");
+				}
+			}
+			console.log("ERROR: Couldn't find param " + name + " in:");
+			console.log(window.Vegebot.rosParameters);
+		}
+		window.Vegebot.setParamCallback = setParamCallback;
 
 		function updateParametersAndSetNextTimer() {
   			window.Vegebot.updateParameterList();
@@ -224,6 +243,7 @@
 
 		 	value = recastValue(value);
 			var matchingParameters = window.Vegebot.rosParameters.filter(function(obj){
+				console.log("*** " + obj.parameter_name);
 				return obj.parameter_name = id;
 			});		
 			if (matchingParameters.length>0) {

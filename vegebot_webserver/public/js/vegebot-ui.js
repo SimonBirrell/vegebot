@@ -28,12 +28,6 @@ function update2DUIWithLettuceHypothesis(lettuceHypothesis) {
 
 	var buttonId = 'button-pick-' + lettuceHypothesis.lettuce_hypothesis_id;
 
-	// menuItemsEnter.append('button')
-	// 	.attr('class', 'pure-button lettuce-pick-button')
-	// 	.attr('onClick', 'pickLettuce(this.id)')
-	// 	.attr('id', buttonId)
-	// 	.text('Full Pick');	
-
 	var id = lettuceHypothesis.lettuce_hypothesis_id;
 	addButtons(menuItemsEnter, 'pick', 'all', id);	
 	addButtons(menuItemsEnter, 'release', 'rel', id);	
@@ -42,18 +36,6 @@ function update2DUIWithLettuceHypothesis(lettuceHypothesis) {
 	addButtons(menuItemsEnter, 'cut', 'cut', id);	
 	addButtons(menuItemsEnter, 'down', 'dwn', id);	
 	addButtons(menuItemsEnter, 'pregrasp', 'pre', id);	
-
-	// menuItemsEnter.append('button')
-	// 	.attr('class', 'pure-button lettuce-pick-button')
-	// 	.attr('onClick', 'nextAction(this.id)')
-	// 	.attr('id', buttonId)
-	// 	.text('Next action');	
-
-	// menuItemsEnter.append('button')
-	// 	.attr('class', 'pure-button lettuce-pick-button')
-	// 	.attr('onClick', 'action(this.id)')
-	// 	.attr('id', buttonId)
-	// 	.text('Action');	
 
 	menuItems
 		.exit()

@@ -37,6 +37,7 @@ PLACE_ORIENTATION = [ 0.0, 0.707106781, 0.0, 0.707106781]
 
 SCAN_POSITION = [ 1.0, 0.0, 1.0]
 SCAN_ORIENTATION= [ 0.0, 0.707106781, 0.0, 0.707106781]
+SCAN_POSITION_PARAM = '/vegebot/scan_position'
 
 END_EFFECTOR_TO_LETTUCE_Z = 0.14
 #END_EFFECTOR_TO_LETTUCE_Z = 0.18
@@ -406,9 +407,23 @@ def detect_image(params):
 
 def detect_camera(params):
     print("Moving to camera position...")
-    move_to(SCAN_POSITION, SCAN_ORIENTATION)  
+    position, orientation = reload_scan_position()
+    #move_to(SCAN_POSITION, SCAN_ORIENTATION)  
+    move_to(position, orientation)  
     print("Generating fake image...")
     trigger_camera_snapshot()
+
+def reload_scan_position():
+    x = rospy.get_param(SCAN_POSITION_PARAM + '_x')
+    y = rospy.get_param(SCAN_POSITION_PARAM + '_y')
+    z = rospy.get_param(SCAN_POSITION_PARAM + '_z')
+     
+    return ([x, y, z], SCAN_ORIENTATION)    
+
+def initialize_scan_position():
+    rospy.set_param(SCAN_POSITION_PARAM + '_x', SCAN_POSITION[0])
+    rospy.set_param(SCAN_POSITION_PARAM + '_y', SCAN_POSITION[1])
+    rospy.set_param(SCAN_POSITION_PARAM + '_z', SCAN_POSITION[2])
 
 def trigger_fake_image_snapshot():
     print("Triggering fake image snapshot...")
@@ -470,6 +485,9 @@ def get_config():
     IS_A_SIMULATION = rospy.get_param(VEGEBOT_SIMULATION_PARAM)   
     if (IS_A_SIMULATION):
         DISABLE_IO = True
+
+def set_defaults():
+    initialize_scan_position()        
     
 def listener():
     print("== Setting up listener...")
@@ -633,6 +651,7 @@ def set_trajectory_speed(traj, speed):
 if __name__ == '__main__':
     print("Vegebot_Commander is listening for commands.")
     get_config()
+    set_defaults()
     set_up_status_topic()
     set_blade_voltage()
     blade_cut()
