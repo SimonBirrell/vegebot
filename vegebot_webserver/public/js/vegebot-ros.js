@@ -13,7 +13,7 @@
 	function init() {
 
 		initVegebotUI();
-		console.log('Initializing Vegeboit ROS...');
+		console.log('Initializing Vegebot ROS...');
 		
 		var ros = new ROSLIB.Ros({
 			url: 'ws://localhost:9090'
@@ -75,6 +75,9 @@
 			name: '/vegebot/lettuce_hypotheses',
 			messageType: 'vegebot_msgs/LettuceHypothesis'
 		});
+
+		createVirtualLettuceZero();
+
 		console.log("Set up listener 2...");
 		console.log(lettuceHypothesesTopic);
 
@@ -102,6 +105,9 @@
 		// Display them in 3D and add or remove from menu
 
 		function receiveLettuceHypothesis(lettuceHypothesis) {
+			console.log("................................");
+			console.log(lettuceHypothesis);
+			console.log("................................");
 			if (lettuceHypothesis.label=='RESET_ALL') {
 				console.log('RESET_ALL received. Forgetting all lettuce Hypotheses...');
 				console.log(Viewer.scene.children);
@@ -137,7 +143,7 @@
 
 		function eraseLettuces() {
 			var lettuceLength = LettuceList.length;
-			for (var i=lettuceLength-1; i>= 0; i--) {
+			for (var i=lettuceLength-1; i>= 1; i--) {
 				var lettuceHypothesis = LettuceList[i],
 					lettuceHypothesisId = lettuceHypothesis.lettuce_hypothesis_id,
 					scene = Viewer.scene,
@@ -154,9 +160,44 @@
 				}
 				console.log(scene.children.length);
 			}
-			Lettuces = {};
-			LettuceList = [];
+			//Lettuces = {};
+			//LettuceList = [];
 			update2DUIWithLettuceHypothesis(0);
+		}
+
+		function createVirtualLettuceZero() {
+			console.log("Creating fake lettuce for manual experiments.");
+
+			var radius = 0.05308232043964489,
+				x = 0.5,
+				y = 0.0,
+				z = 0.05;
+
+			var lettuceHypothesis = {
+ 				lettuce_hypothesis_id: "0", 
+ 				pose: {
+ 					position: {
+ 						x: x,
+ 						y: y,
+ 						z: z
+ 					},
+ 					orientation: {
+ 						x: 0.0,
+ 						y: 0.0,
+ 						z: 0.0,
+ 						w: 0.0
+ 					}
+ 				}, 
+ 				radius: radius, 
+ 				probability: 0.99, 
+ 				label: "lettuce_0"
+			};
+
+			window.LettuceList.push(lettuceHypothesis);
+			window.Lettuces['0'] = lettuceHypothesis;
+			lettuceHypothesis.model3D = create3DLettuce(radius, x, y, z);
+			update3DdisplayWithLettuceHypothesis(lettuceHypothesis);
+			window.Vegebot.update2DUIWithLettuceHypothesis(lettuceHypothesis);
 		}
 
 		function paramBelongsToVegebot(param) {
