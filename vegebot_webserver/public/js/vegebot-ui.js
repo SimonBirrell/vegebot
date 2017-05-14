@@ -37,6 +37,23 @@ function update2DUIWithLettuceHypothesis(lettuceHypothesis) {
 	addButtons(menuItemsEnter, 'down', 'dwn', id);	
 	addButtons(menuItemsEnter, 'pregrasp', 'pre', id);	
 
+	addPosButtons(menuItemsEnter, 'pos', id);	
+
+	var forms = menuItemsEnter.append('form')
+		.attr('onsubmit', 'changeCoordinates(event);')
+		.attr('action', '#')
+		.attr('class', 'pure-form')
+		.attr('id', function(d) {
+			return 'pos-' + d.id;
+		});
+
+	var fieldsets = forms.append('fieldset');
+	fieldsets.append('input')
+		.attr('name', function(d) {
+			return 'pos-' + d.id;
+		})
+
+
 	menuItems
 		.exit()
 		.remove();	
@@ -52,6 +69,19 @@ function addButtons(containers, command, label, lettuceHypothesisId) {
 		.attr('onClick', "doAction(this.id, '" + command + "');")
 		.attr('id', buttonId)
 		.text(label);	
+}
+
+function addPosButtons(containers, label, lettuceHypothesisId) {
+	var buttonId = 'button-pos-' + lettuceHypothesisId;
+
+	containers.append('a')
+		.attr('class', 'pure-button lettuce-pick-button')
+		.attr('data-toggle', 'modal')
+		.attr('role', 'button')
+		.attr('href', '#myModal')
+		//.attr('onClick', "doAction(this.id, '" + command + "');")
+		.attr('id', buttonId)
+		.text(label);		
 }
 
 function updateParameterList() {

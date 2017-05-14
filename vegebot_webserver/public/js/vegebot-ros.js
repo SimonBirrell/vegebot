@@ -169,12 +169,12 @@
 			//sendVegebotCommand('list_parameters');
 			ros.getParams(function(params) {
     			filteredRosParams = params.filter(paramBelongsToVegebot);
-    			console.log("Parameters:");
-    			console.log(filteredRosParams);
+    			//console.log("Parameters:");
+    			//console.log(filteredRosParams);
     			for (var i=0; i<filteredRosParams.length; i++) {
     				var parameter_name = filteredRosParams[i],
     					parameter_id = parameterNameToId(parameter_name);
-    				console.log("-- " + parameter_name);
+    				//console.log("-- " + parameter_name);
     				var param = new ROSLIB.Param({
     					ros : ros,
     					name : parameter_name

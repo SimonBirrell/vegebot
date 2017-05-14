@@ -5,7 +5,6 @@
 
 	<link rel="stylesheet" href="/css/pure-min.css" integrity="sha384-CCTZv2q9I9m3UOxRLaJneXrrqKwUNOzZ6NGEUMwHtShDJ+nCoiXJCAgi05KfkLGY" crossorigin="anonymous">
 
-
 	<script type="text/javascript" src="/lib/three.min.js"></script>
 	<script type="text/javascript" src="/lib/ColladaLoader.min.js"></script>
 	<script type="text/javascript" src="/lib/ColladaLoader2.min.js"></script>
@@ -238,6 +237,12 @@
 
       
       </script>
+
+  <script type='text/javascript' src='/js/jquery-2.1.0.min.js' />
+  <link rel='stylesheet' href='/css/modal.css' />
+  <script type="text/javascript" src="/js/modal.js"></script>
+
+
 </head>
 <body onload="init()">
 	<div class='pure-g'>
@@ -259,5 +264,44 @@
     <div id="parameters" class="pure-u-1-1">
     </div>
 	</div>
+
+  <div id="myModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display: none;">
+        <div class="modal-header">
+            <h1 id="myModalLabel">A Bootstrap Modal with Pure</h1>
+        </div>
+    
+        <div class="modal-body">
+            <p>
+                This modal is launched by including <em>just</em> the <code>modal.css</code> and <code>modal.js</code> file from Bootstrap, and including Pure to drive all low-level styles. The result is a fully-functional Modal using just a fraction of the CSS.
+            </p>
+    
+            <form class="pure-form pure-form-stacked">
+                <legend>A Stacked Form</legend>
+    
+                <label for="email">Email</label>
+                <input id="email" placeholder="Email" type="text">
+    
+                <label for="password">Password</label>
+                <input id="password" placeholder="Password" type="password">
+    
+                <label for="state">State</label>
+                <select id="state">
+                    <option>AL</option>
+                    <option>CA</option>
+                    <option>IL</option>
+                </select>
+    
+                <label class="pure-checkbox">
+                    <input type="checkbox"> Remember me
+                </label>
+            </form>
+        </div>
+    
+        <div class="modal-footer">
+            <button class="pure-button" data-dismiss="modal" aria-hidden="true">Close</button>
+            <button class="pure-button pure-button-primary">Submit</button>
+        </div>
+    </div>
+    
 </body>
 </html>

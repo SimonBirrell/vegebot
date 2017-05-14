@@ -33,8 +33,8 @@ DEFAULT_FAKE_PROBABILITY = 0.8
 DEFAULT_FAKE_LABEL = 'healthy'
 
 # Use degrees as more intuitive
-FIELD_HEIGHT_ANGLE = 80
-FIELD_WIDTH_ANGLE = 60
+FIELD_HEIGHT_ANGLE = 30
+FIELD_WIDTH_ANGLE = 50
 # 
 FIELD_PIXEL_WIDTH = 0
 FIELD_PIXEL_HEIGHT = 0
@@ -63,9 +63,9 @@ def subscribe_to_lettuce_images_raw_topic(callback):
                            callback)
 
 def get_camera_params():
-    global FIELD_WIDTH_ANGLE, FIELD_WIDTH_HEIGHT, FIELD_WIDTH_ANGLE_PARAM, FIELD_HEIGHT_ANGLE_PARAM
+    global FIELD_WIDTH_ANGLE, FIELD_HEIGHT_ANGLE, FIELD_WIDTH_ANGLE_PARAM, FIELD_HEIGHT_ANGLE_PARAM
     FIELD_WIDTH_ANGLE = rospy.get_param(FIELD_WIDTH_ANGLE_PARAM)    
-    FIELD_WIDTH_HEIGHT = rospy.get_param(FIELD_HEIGHT_ANGLE_PARAM)    
+    FIELD_HEIGHT_ANGLE = rospy.get_param(FIELD_HEIGHT_ANGLE_PARAM)    
     rospy.loginfo("Read PARAM")
     rospy.loginfo(FIELD_PIXEL_WIDTH)
 
@@ -243,7 +243,9 @@ class LettuceHypothesisComplete:
         self.radius3D = points2D_to_distance3D(self.x2D(), self.y2D(), 
                                                self.x2D()+self.w2D(), 
                                                self.y2D()+self.h2D()) / 2.0
-        self.centre3D = point_2D_to_point_3D(self.x2D(), self.y2D())
+        rospy.loginfo("calculate_3D_pos")
+        #self.centre3D = point_2D_to_point_3D(self.x2D(), self.y2D())
+        self.centre3D = point_2D_to_point_3D(centre_x, centry_y)
         self.centre3D.point.z = self.centre3D.point.z + self.radius3D
 
     def radius3D(self):
@@ -273,11 +275,19 @@ class LettuceHypothesisComplete:
 
 ########################### 3D Geometry ##########################################
 
-def point_2D_to_point_3D(x,y):
+def point_2D_to_point_3D(x2D, y2D):
     global FIELD_WIDTH_ANGLE, FIELD_HEIGHT_ANGLE
-    rospy.loginfo("===========")
+
+    x = x2D
+    y = y2D
+
+    rospy.loginfo("$===========")
+    rospy.loginfo(x2D)
+    rospy.loginfo(y2D)
+    rospy.loginfo("$===========")
+    rospy.loginfo("Field widths:")
     rospy.loginfo(FIELD_WIDTH_ANGLE)
-    rospy.loginfo("===========")
+    rospy.loginfo(FIELD_HEIGHT_ANGLE)
 
     camera_transform = get_camera_to_world_transform()
     distance_to_floor = camera_transform.transform.translation.z
@@ -286,10 +296,12 @@ def point_2D_to_point_3D(x,y):
     field_height = 2.0 * distance_to_floor * math.tan(math.radians(FIELD_HEIGHT_ANGLE) / 2.0)
     half_field_height = field_height / 2.0
 
+    FUDGE = 0.10
+
     # x,y relative to top left of camera field
     x3D = distance_to_floor
-    y3D = half_field_width - (field_width * x / FIELD_PIXEL_WIDTH)
-    z3D = half_field_height - (field_width * y / FIELD_PIXEL_HEIGHT)
+    z3D = (half_field_width - (field_width * x / FIELD_PIXEL_WIDTH))
+    y3D = -(half_field_height - (field_height * y / FIELD_PIXEL_HEIGHT)) #+ FUDGE
 
     point_in_world = transformed_point(x3D, y3D, z3D, camera_transform)
     return point_in_world

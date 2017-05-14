@@ -58,7 +58,7 @@
 
   <xacro:property name="ee_camera_offset_x" value="0.1" />
   <xacro:property name="camera_size" value="0.05" />
-  <xacro:property name="camera_offset_z" value="0.03" />
+  <xacro:property name="camera_offset_y" value="0.05" />
 
   <xacro:macro name="wheel_assembly">
     <visual>
@@ -333,7 +333,7 @@
   <joint name="end_effector_joint" type="fixed">
     <parent link="ee_link" />
     <child link = "camera_link" />
-    <origin xyz="${bucket_length} ${-bucket_radius - camera_offset_z} 0.0" rpy="0.0 0.0 0.0" />
+    <origin xyz="${bucket_length} 0.0 ${bucket_radius + camera_offset_y}" rpy="0.0 0.0 0.0" />
   </joint>
 
   <link name="bucket_link">
