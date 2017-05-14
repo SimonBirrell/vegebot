@@ -37,21 +37,27 @@ function update2DUIWithLettuceHypothesis(lettuceHypothesis) {
 	addButtons(menuItemsEnter, 'down', 'dwn', id);	
 	addButtons(menuItemsEnter, 'pregrasp', 'pre', id);	
 
-	addPosButtons(menuItemsEnter, 'pos', id);	
+	if (lettuceHypothesis.lettuce_hypothesis_id == "0") {
+		var lettuceZeroX = d3.select('#lx0').attr("value", lettuceHypothesis.pose.position.x),
+			lettuceZeroX = d3.select('#ly0').attr("value", lettuceHypothesis.pose.position.y),
+			lettuceZeroX = d3.select('#lz0').attr("value", lettuceHypothesis.pose.position.z);
+	}
 
-	var forms = menuItemsEnter.append('form')
-		.attr('onsubmit', 'changeCoordinates(event);')
-		.attr('action', '#')
-		.attr('class', 'pure-form')
-		.attr('id', function(d) {
-			return 'pos-' + d.id;
-		});
+	// addPosButtons(menuItemsEnter, 'pos', id);	
 
-	var fieldsets = forms.append('fieldset');
-	fieldsets.append('input')
-		.attr('name', function(d) {
-			return 'pos-' + d.id;
-		})
+	// var forms = menuItemsEnter.append('form')
+	// 	.attr('onsubmit', 'changeCoordinates(event);')
+	// 	.attr('action', '#')
+	// 	.attr('class', 'pure-form')
+	// 	.attr('id', function(d) {
+	// 		return 'pos-' + d.id;
+	// 	});
+
+	// var fieldsets = forms.append('fieldset');
+	// fieldsets.append('input')
+	// 	.attr('name', function(d) {
+	// 		return 'pos-' + d.id;
+	// 	})
 
 
 	menuItems
@@ -161,4 +167,26 @@ function submitParameterForm(e) {
 
 function formToFieldId(formId) {
 	return formId + '-input';
+}
+
+function changeLettuceZeroCoordinates(e) {
+	var x0 = document.getElementById('lx0').value,
+		y0 = document.getElementById('ly0').value,
+		z0 = document.getElementById('lz0').value;
+
+	if (window.LettuceList.length>0) {
+		console.log("Changing lettuce zero...");
+		console.log(window.Lettuces);
+		var lettuce = window.Lettuces['0'];
+		console.log(lettuce.pose.position);
+		lettuce.pose.position.x = parseFloat(x0);
+		lettuce.pose.position.y = parseFloat(y0);
+		lettuce.pose.position.z = parseFloat(z0);
+		console.log(lettuce.pose.position);
+		window.update3DdisplayWithLettuceHypothesis(window.Lettuces['0']);
+	} else {
+		console.log("******* lettuce zero not found ********");
+	}
+
+	return false;
 }

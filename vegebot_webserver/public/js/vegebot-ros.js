@@ -395,4 +395,4 @@ function update3DdisplayWithLettuceHypothesis(lettuceHypothesis) {
 
 	model3D.position = pos;
 }
-
+window.update3DdisplayWithLettuceHypothesis = update3DdisplayWithLettuceHypothesis;

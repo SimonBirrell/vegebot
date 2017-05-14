@@ -256,8 +256,22 @@
     <div class="pure-u-1-1 status">
       <span id="vegebot-status">&nbsp;</span>
     </div>
+
     <div id="lettuce-menu" class='pure-g'>
     </div>
+
+    <div id="manual" class="pure-u-1-1">
+            <form class="pure-form" onsubmit="return changeLettuceZeroCoordinates(event);">
+                <legend>Lettuce Zero Coordinates</legend>
+    
+                <input id="lx0" placeholder="x" type="text" />
+                <input id="ly0" placeholder="y" type="text" />
+                <input id="lz0" placeholder="z" type="text" />
+    
+                <input class="pure-button" value="Submit" type="submit">
+            </form>
+    </div>
+
     <div class="pure-u-1-1">
       <h2>Parameters</h2>
     </div>
@@ -265,6 +279,9 @@
     </div>
 	</div>
 
+
+
+<!--
   <div id="myModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display: none;">
         <div class="modal-header">
             <h1 id="myModalLabel">A Bootstrap Modal with Pure</h1>
@@ -302,6 +319,7 @@
             <button class="pure-button pure-button-primary">Submit</button>
         </div>
     </div>
+    -->
     
 </body>
 </html>
