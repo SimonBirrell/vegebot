@@ -23,7 +23,7 @@ VEGEBOT_SIMULATION_PARAM = "/vegebot/simulation"
 VEGEBOT_STATUS_TOPIC = "/vegebot/status"
 IS_A_SIMULATION = False
 DISABLE_MOVEMENT = False
-DISABLE_IO = True 
+DISABLE_IO = False 
 
 PICK_POSITION = [ 1.0, 0.0, 0.5]
 PICK_ORIENTATION= [ 0.5, -0.5, -0.5, -0.5]

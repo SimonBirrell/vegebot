@@ -1,0 +1,376 @@
+<?xml version="1.0"?>
+<robot name="vegebot" xmlns:xacro="http://ros.org/wiki/xacro">
+
+<!--
+  Author: Simon Birrell
+  BIRL Laboratory, Engineering Dept., University of Cambridge
+-->
+
+  <!-- Vegebot platform dimensions -->
+  <xacro:property name="floor_thickness" value="0.05" />
+
+  <xacro:property name="platform_width" value="2.12" />
+  <xacro:property name="platform_height" value="0.58" />
+  <xacro:property name="platform_length" value="0.32" />
+  <xacro:property name="platform_depth" value="0.10" />
+
+  <xacro:property name="rear_platform_width" value="2.12" />
+  <xacro:property name="rear_platform_height" value="0.50" />
+  <xacro:property name="rear_platform_length" value="0.39" />
+  <xacro:property name="rear_platform_depth" value="0.02" />
+  <xacro:property name="rear_platform_to_origin_x" value="0.2" />
+
+  <xacro:property name="wheel_mount_width" value="0.20" />
+  <xacro:property name="wheel_mount_depth" value="0.35" />
+  <xacro:property name="wheel_mount_length" value="0.35" />
+  <xacro:property name="wheel_mount_height" value="0.40" />
+  <xacro:property name="wheel_mount_offset_x" value="0.04" />  
+  <xacro:property name="wheel_offset_x" value="0.155" />
+  <xacro:property name="wheel_offset_z" value="-0.135" />
+  <xacro:property name="wheel_length" value="0.10" />
+  <xacro:property name="wheel_radius" value="0.20" />
+
+  <xacro:property name="bucket_length" value="0.24" />
+  <xacro:property name="bucket_radius" value="0.14" />
+  <xacro:property name="ee_bucket_offset_x" value="0.12" />
+
+  <xacro:property name="pneumatic_width" value="0.22" />
+  <xacro:property name="pneumatic_depth" value="0.06" />
+  <xacro:property name="pneumatic_length" value="0.18" />
+  <xacro:property name="bucket_pneumatic_offset_x" value="0.0" />
+  <xacro:property name="bucket_pneumatic_offset_y" value="0.28" />
+
+  <xacro:property name="bar_width" value="0.04" />
+  <xacro:property name="bar_depth" value="0.04" />
+  <xacro:property name="bar_length" value="0.70" />
+
+  <xacro:property name="strut_width" value="0.08" />
+  <xacro:property name="strut_depth" value="0.08" />
+  <xacro:property name="strut_length" value="1.09" />
+
+  <xacro:property name="angled_bar_length" value="0.48" />
+  <xacro:property name="cross_bar_length" value="1.02" />
+
+  <xacro:property name="horizontal_bar_offset_y" value="0.47" />
+
+  <xacro:property name="front_platform_to_origin_arm" value="0.16" />
+  <xacro:property name="top_platform_to_origin_arm" value="0.0" />
+
+  <xacro:property name="ee_camera_offset_x" value="0.1" />
+  <xacro:property name="camera_size" value="0.05" />
+  <xacro:property name="camera_offset_z" value="0.03" />
+
+  <xacro:macro name="wheel_assembly">
+    <visual>
+      <geometry>
+        <box size="${wheel_mount_length} ${wheel_mount_width} ${wheel_mount_depth}" />
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" />
+      <material name="grey">
+        <color rgba="0.8 0.8 0.8 1" />
+      </material>
+    </visual>
+    <visual>
+      <geometry>
+        <cylinder length="${wheel_length}" radius="${wheel_radius}">
+        </cylinder>
+        <origin xyz="${wheel_offset_x} 0.0 ${wheel_offset_z}" rpy="1.57075 0.0 0.0" />
+        <material name="dark_grey">
+          <color rgba="0.1 0.1 0.1 1" />
+        </material>
+      </geometry>
+    </visual>
+  </xacro:macro>
+
+  <xacro:macro name="plywood_material">
+      <material name="brown">
+        <color rgba="0.89 0.7565 0.445 1" />
+      </material>
+  </xacro:macro>
+
+  <xacro:macro name="bar_material">
+      <material name="deep_brown">
+        <color rgba="0.41 0.164 0.0 1" />
+      </material>
+  </xacro:macro>
+
+  <!-- common stuff -->
+  <xacro:include filename="$(find ur_description)/urdf/common.gazebo.xacro" />
+
+  <!-- ur10 -->
+  <xacro:include filename="$(find vegebot_run)/urdf/ur10.urdf.xacro" />
+
+  <!-- arm -->
+  <xacro:ur10_robot prefix="" joint_limited="true"/>
+
+  <link name="world">
+    <!-- Draw a floor -->
+    <visual>
+      <geometry>
+        <box size="${platform_length * 8.0} ${platform_width * 2.0} ${floor_thickness}" />
+      </geometry>
+      <origin xyz="0.0 0.0 ${-floor_thickness / 2.0}" />
+      <material name="gray">
+        <color rgba="0.1 0.1 0.4 1" />
+      </material>
+    </visual>
+  </link>
+
+  <link name="platform">
+   
+    <visual>
+      <geometry>
+        <box size="${platform_length} ${platform_width} ${platform_depth}" />
+      </geometry>
+      <origin xyz="0.0 0.0 ${platform_height - platform_depth / 2.0}" />
+      <xacro:plywood_material />
+    </visual>
+
+<!--
+    <collision>
+      <geometry>
+        <box size="${platform_length} ${platform_width} ${platform_height}" />
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" />
+    </collision>
+-->    
+  </link>
+
+  <link name="wheel_mount_front_right">
+    <xacro:wheel_assembly />
+  </link>
+
+  <link name="wheel_mount_front_left">
+    <xacro:wheel_assembly />
+  </link>
+
+  <link name="wheel_mount_back_right">
+    <xacro:wheel_assembly />
+  </link>
+
+  <link name="wheel_mount_back_left">
+    <xacro:wheel_assembly />
+  </link>
+
+  <xacro:macro name="strut" params="name">
+    <link name="${name}">
+      <visual>
+        <geometry>
+          <box size="${strut_length} ${strut_width} ${strut_depth}" />
+        </geometry>
+        <origin xyz="0.0 0.0 0.0" />
+        <xacro:bar_material />
+      </visual>    
+    </link>
+  </xacro:macro>
+
+  <xacro:strut name="strut_right" />
+  <xacro:strut name="strut_left" />
+
+  <xacro:macro name="bar" params="name length">
+    <link name="${name}">
+      <visual>
+        <geometry>
+          <box size="${length} ${bar_width} ${bar_depth}" />
+        </geometry>
+        <origin xyz="0.0 0.0 0.0" />
+        <xacro:bar_material />
+      </visual>    
+    </link>
+  </xacro:macro>
+
+  <xacro:macro name="angled_bar" params="name length">
+    <link name="${name}">
+      <visual>
+        <geometry>
+          <box size="${length} ${bar_width} ${bar_depth}" />
+        </geometry>
+        <origin xyz="${length / 2.0} 0.0 0.0" />
+        <xacro:bar_material />
+      </visual>    
+    </link>
+  </xacro:macro>
+
+  <xacro:macro name="cross_bar" params="name length">
+    <link name="${name}">
+      <visual>
+        <geometry>
+          <box size="${length} ${bar_width} ${bar_depth}" />
+        </geometry>
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+        <xacro:bar_material />
+      </visual>    
+    </link>
+  </xacro:macro>
+
+  <xacro:bar name="horizontal_bar_right" length="${bar_length}" />  
+  <xacro:bar name="horizontal_bar_left" length="${bar_length}" />  
+  <xacro:angled_bar name="angled_bar_right" length="${angled_bar_length}" />  
+  <xacro:angled_bar name="angled_bar_left" length="${angled_bar_length}" />  
+  <xacro:angled_bar name="cross_bar" length="${cross_bar_length}" />  
+
+  <link name="rear_platform">
+   
+    <visual>
+      <geometry>
+        <box size="${rear_platform_length} ${rear_platform_width} ${rear_platform_depth}" />
+      </geometry>
+      <origin xyz="0.0 0.0 ${rear_platform_height - rear_platform_depth / 2.0}" />
+      <xacro:plywood_material />
+    </visual>
+
+  </link>
+
+<xacro:macro name="side_constraint" params="side">
+  <link name="constraint_${side}_side">
+    <collision>
+      <geometry>
+        <box size="4.0 0.2 2.0" />
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+    </collision>
+    <xacro:plywood_material />    
+  </link>
+</xacro:macro>
+
+<xacro:side_constraint side="right" />
+<xacro:side_constraint side="left" />
+
+  <link name="camera_link">
+    <visual>
+      <geometry>
+        <box size="${camera_size} ${camera_size} ${camera_size}" />
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" />
+      <material name="red">
+         <color rgba="1 0 0 1" />
+      </material>
+    </visual>
+  </link>
+
+  <joint name="world_joint" type="fixed">
+    <parent link="world" />
+    <child link = "platform" />
+    <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+  </joint>
+
+  <joint name="world_to_rear_platform_joint" type="fixed">
+    <parent link="world" />
+    <child link = "rear_platform" />
+    <origin xyz="${-(platform_length/2.0)-(rear_platform_length/2.0)} 0.0 0.0" rpy="0.0 0.0 0.0" />
+  </joint>
+
+  <joint name="platform_arm_joint" type="fixed">
+    <parent link="platform" />
+    <child link = "base_link" />
+    <origin xyz="${(platform_length/2.0) - front_platform_to_origin_arm} 0.0 ${platform_height + top_platform_to_origin_arm}" rpy="0.0 0.0 0.0" />
+  </joint>
+
+  <xacro:macro name="wheel_assembly_joint" params="link x y" >
+    <joint name="platform_wheel_mount_${link}_joint" type="fixed">
+      <parent link="platform" />
+      <child link = "wheel_mount_${link}" />
+      <origin xyz="${x + wheel_mount_length / 2.0} ${y + wheel_mount_width/2.0} ${platform_height - platform_depth - wheel_mount_depth / 2.0}" rpy="0.0 0.0 0.0" />
+    </joint>
+  </xacro:macro>
+
+  <xacro:wheel_assembly_joint link="front_right" x="${front_platform_to_origin_arm + wheel_mount_offset_x}" y="${-platform_width / 2.0}" />
+
+  <xacro:wheel_assembly_joint link="front_left" x="${front_platform_to_origin_arm + wheel_mount_offset_x}" y="${platform_width / 2.0 - wheel_mount_width}" />
+
+  <xacro:wheel_assembly_joint link="back_right" x="${front_platform_to_origin_arm - platform_length - rear_platform_length}" y="${-platform_width / 2.0}" />
+
+  <xacro:wheel_assembly_joint link="back_left" x="${front_platform_to_origin_arm - platform_length - rear_platform_length}" y="${platform_width / 2.0 - wheel_mount_width}" />
+
+<xacro:macro name="platform_horizontal_bar_joint" params="name y">
+  <joint name="platform_horizontal_bar_${name}_joint" type="fixed">
+    <parent link="platform" />
+    <child link="horizontal_bar_${name}" />
+    <origin xyz="${front_platform_to_origin_arm - bar_length / 2.0} ${y} ${platform_height + bar_depth / 2.0}" />
+  </joint>
+</xacro:macro>
+
+<xacro:macro name="angled_bar_joint" params="name y">
+  <joint name="platform_angled_bar_${name}_joint" type="fixed">
+    <parent link="platform" />
+    <child link="angled_bar_${name}" />
+    <origin xyz="${front_platform_to_origin_arm - bar_length} ${y} ${platform_height + bar_depth / 2.0}" rpy="0.0 ${3.14+1.024} 0.0" />
+  </joint>
+</xacro:macro>
+
+<xacro:platform_horizontal_bar_joint name="right" y="${-horizontal_bar_offset_y}" />  
+<xacro:platform_horizontal_bar_joint name="left" y="${horizontal_bar_offset_y}" />  
+<xacro:angled_bar_joint name="right" y="${-horizontal_bar_offset_y}" />  
+<xacro:angled_bar_joint name="left" y="${horizontal_bar_offset_y}" />  
+
+  <joint name="platform_cross_bar_joint" type="fixed">
+    <parent link="platform" />
+    <child link="cross_bar" />
+    <origin xyz="${front_platform_to_origin_arm - bar_length - 0.27} ${-cross_bar_length / 2.0} ${platform_height + 0.41}" rpy="0.0 0.0 ${3.14 / 2.0}" />
+  </joint>
+
+  <xacro:macro name="platform_strut_joint" params="name y">
+    <joint name="platform_strut_${name}_joint" type="fixed">
+      <parent link="platform" />
+      <child link="strut_${name}" />
+      <origin xyz="${front_platform_to_origin_arm + wheel_mount_offset_x + wheel_mount_length - strut_length / 2.0} ${y} ${platform_height - platform_depth - strut_depth}" />
+    </joint>
+  </xacro:macro>
+
+  <xacro:platform_strut_joint name="right" y="${platform_width / 2.0 - strut_width / 2.0}" />
+  <xacro:platform_strut_joint name="left" y="${-platform_width / 2.0 + strut_width / 2.0}" />
+
+  <xacro:macro name="platform_side_constraint" params="side y">
+    <joint name="platform_${side}_side_constraint" type="fixed">
+      <parent link="platform" />
+      <child link="constraint_${side}_side" />
+      <origin xyz="0.0 ${y} 1.0" rpy="0.0 0.0 0.0" />
+    </joint>
+  </xacro:macro>
+  <xacro:platform_side_constraint side="right" y="${-platform_width / 2.0}" />
+  <xacro:platform_side_constraint side="left" y="${platform_width / 2.0}" />
+
+  <joint name="end_effector_joint" type="fixed">
+    <parent link="ee_link" />
+    <child link = "camera_link" />
+    <origin xyz="${bucket_length} ${-bucket_radius - camera_offset_z} 0.0" rpy="0.0 0.0 0.0" />
+  </joint>
+
+  <link name="bucket_link">
+    <visual>
+      <geometry>
+        <cylinder length="${bucket_length}" radius="${bucket_radius}" />
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+       <material name="dark_gray">
+        <color rgba="0.8 0.8 0.8 1" />
+      </material> 
+    </visual>
+  </link>
+
+  <joint name="end_effector_bucket_joint" type="fixed">
+    <parent link="ee_link" />
+    <child link = "bucket_link" />
+    <origin xyz="${ee_bucket_offset_x} 0.0 0.0" rpy="0.0 1.5708 0.0" />
+  </joint>
+
+  <link name="pneumatic_link">
+    <visual>
+      <geometry>
+        <box size="${pneumatic_length} ${pneumatic_width} ${pneumatic_depth}" />
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+       <material name="dark_gray">
+        <color rgba="0.8 0.8 0.8 1" />
+      </material> 
+    </visual>
+  </link>
+
+  <joint name="bucket_pneumatic_joint" type="fixed">
+    <parent link="bucket_link" />
+    <child link = "pneumatic_link" />
+
+    <origin xyz="0.0 ${bucket_radius + pneumatic_width / 2.0 + 0.05} ${bucket_length / 2.0 - pneumatic_depth / 2.0}" rpy="0.0 0.0 0.0" />
+  </joint>
+
+</robot>
