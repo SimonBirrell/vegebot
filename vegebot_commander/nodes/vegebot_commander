@@ -71,40 +71,6 @@ Vegebot_arm = None
 
 # MoveIt routines        
 
-# def action(params):
-#     global Next_action, Last_action
-#     Next_action = Last_action
-#     next_action(params)
-
-# def next_action(params):
-#     global Next_action, Last_action, Current_reference_position
-
-#     print("==== Next action triggered ====")   
-#     position = get_position_from_params(params)
-#     pregrasp_position = add_vectors(position, PREGRASP_OFFSET)
-#     pregrasp_position = add_vectors(pregrasp_position, TARGET_END_EFFECTOR_OFFSET)
-#     target_position = add_vectors(position, TARGET_END_EFFECTOR_OFFSET)
-#     if (position != None):
-#         if (Next_action==None) or (Current_reference_position != position):
-#             Next_action = 'pregrasp'
-#         Last_action = Next_action        
-#         if Next_action=='pregrasp':
-#             success, status_message, Next_action = action_pregrasp(pregrasp_position)
-#         elif Next_action=="down":
-#             success, status_message, Next_action = action_down(target_position)  
-#         elif Next_action=="cut":
-#             success, status_message, Next_action = action_cut()  
-#         elif Next_action=="up":
-#             success, status_message, Next_action = action_up(pregrasp_position)  
-#         elif Next_action=="place":
-#             success, status_message, Next_action = action_place()  
-#         elif Next_action=="release":
-#             success, status_message, Next_action = action_release()  
-#         publish_status_message(status_message)    
-#         Current_reference_position = position         
-#     else:
-#         rospy.loginfo("***** Bad position sent from UI *****")
-#         pospy.loginfo("Cancelling next action.")
 
 def publish_status_message(message):
         rospy.loginfo(message)
@@ -115,7 +81,7 @@ def publish_status_message(message):
 class ArmController():
 
     def __init__(self):
-        pass
+        self.kinematics_controller = ArmKinematicsController()
 
     def set_target_position(self, position):
         self.pregrasp_position = add_vectors(position, PREGRASP_OFFSET)
@@ -124,7 +90,7 @@ class ArmController():
 
     def action_park(self):
         self.log("Parking...")
-        move_to(PARK_POSITION, PARK_ORIENTATION)  
+        self.kinematics_controller.move_to(PARK_POSITION, PARK_ORIENTATION)  
         if (blade_release()):
             return (True, "Park succeeded.", "pregrasp")
         else:
@@ -160,7 +126,7 @@ class ArmController():
 
     def action_place(self):
         self.log("Executing place...")
-        if (move_to(PLACE_POSITION, PLACE_ORIENTATION)):
+        if (self.kinematics_controller.move_to(PLACE_POSITION, PLACE_ORIENTATION)):
             return (True, "Place succeeded.", "release")
         else:
             return (False, "Place FAILED.", "place")
@@ -200,53 +166,129 @@ class ArmController():
     def action_scan_position(self):
         print("Moving to camera position...")
         position, orientation = reload_scan_position()
-        move_to(position, orientation)  
+        self.kinematics_controller.move_to(position, orientation)  
                         
     def log(self, message):
         rospy.loginfo(message)        
 
     def reach_to_pregrasp_position(self, pregrasp_position):
         print("== Moving to pregrasp position...")
-        return move_to(pregrasp_position, PICK_ORIENTATION)
+        return self.kinematics_controller.move_to(pregrasp_position, PICK_ORIENTATION)
 
     def descend_on_lettuce(self, position):
         global CARTESIAN_APPROACH
         print("== Approach lettuce...")
         if (CARTESIAN_APPROACH):
-            return cartesian_move_to(position, PICK_ORIENTATION)
+            return self.kinematics_controller.cartesian_move_to(position, PICK_ORIENTATION)
         else:
-            return move_to(position, PICK_ORIENTATION)
+            return self.kinematics_controller.move_to(position, PICK_ORIENTATION)
 
     def ascend_from_lettuce(self, pregrasp_position):
         global CARTESIAN_APPROACH
         print("== Retreat from lettuce...")
         if (CARTESIAN_APPROACH):
-            return cartesian_move_to(pregrasp_position, PICK_ORIENTATION)
+            return self.kinematics_controller.cartesian_move_to(pregrasp_position, PICK_ORIENTATION)
         else:
-            return move_to(pregrasp_position, PICK_ORIENTATION)
+            return self.kinematics_controller.move_to(pregrasp_position, PICK_ORIENTATION)
 
 
 #######################################################################################        
 
-# def do_place():
-#     print("== Moving end effector to place position...")
-#     move_to(PLACE_POSITION, PLACE_ORIENTATION)
-#     print("== Release lettuce...")
-#     blade_release()
+class ArmKinematicsController():
+
+    def __init__(self):
+        pass
+
+    def move_to(self, position, orientation):
+        global Manipulator
+
+        if DISABLE_MOVEMENT:
+            rospy.sleep(3)
+            return True
+
+        print("Moving...")
+        print "== Setting target"
+        pose_target = new_pose(position, orientation)
+        Manipulator.set_pose_target(pose_target)
+        #print Robot.get_current_state()
+
+        print("== Devising plan")
+        attempts = 0
+        trajectory = None
+        while (attempts < MAX_PLANNING_ATTEMPTS):
+            print "Planning attempt %s" % attempts
+            trajectory = Manipulator.plan()
+            #print trajectory
+            if (plan_has_succeeded(trajectory)):
+                break
+            attempts = attempts + 1    
+        if (not plan_has_succeeded(trajectory)):
+            print("********* Could not find plan after %s attempts ********" % attempts)
+            return False
+
+        print("== Moving to target pose...")
+        scaled_trajectory = scale_trajectory_speed(trajectory, VELOCITY_SCALE)
+        #result = Manipulator.execute(trajectory)
+        result = Manipulator.execute(scaled_trajectory)
+        print("----------------------------")
+        print result
+        print("----------------------------")
+        # This following get_current_state() call appears to be necessary to normalize 
+        # joint angles
+        workaround = Robot.get_current_state()
+        rospy.loginfo("== Move complete!")
+        return result
+        # return True
+
+    def cartesian_move_to(self, position, orientation):
+        global Manipulator
+
+        if DISABLE_MOVEMENT:
+            rospy.sleep(3)
+            return True
+
+        end_effector_link = Manipulator.get_end_effector_link()
+        start_pose = Manipulator.get_current_pose(end_effector_link).pose
+        end_pose = deepcopy(new_pose(position, orientation))
+        waypoints=[]
+        # Don-t add start point! 
+        # http://answers.ros.org/question/253004/moveit-problem-error-trajectory-message-contains-waypoints-that-are-not-strictly-increasing-in-time/
+        #waypoints.append(deepcopy(start_pose))
+        waypoints.append(end_pose)
+
+        fraction = 0.0
+        max_tries = 100
+        attempts = 0
+        eef_step = 0.01
+        jump_threshold = 0.0
+        avoid_collisions = True
+        while fraction < 1.0 and attempts < max_tries:
+            (plan, fraction) = Manipulator.compute_cartesian_path(
+                                            waypoints,
+                                            eef_step,
+                                            jump_threshold,
+                                            avoid_collisions)
+            attempts += 1
+            if attempts % 100 == 0:
+                rospy.loginfo("Still attempting cartesian after " + str(attempts) + " attempts...")
+        if fraction==1.0:
+            rospy.loginfo("******** Successfully found Carteian trajectory.")
+            rospy.loginfo(start_pose.position)
+            rospy.loginfo(end_pose.position)
+            scaled_plan = scale_trajectory_speed(plan, VELOCITY_SCALE)
+            Manipulator.execute(scaled_plan)
+            #Manipulator.execute(plan)
+            workaround = Robot.get_current_state()
+            #rospy.sleep(2)
+            rospy.loginfo("******** Successfully executed Carteian trajectory.")
+            return True
+        else:
+            rospy.loginfo("Failed to find Cartesian trajectory after " + str(attempts) + " attempts...")
+            return False
 
 
-# def get_target_position_from_params(params):
-#     return get_position_from_params(params)
 
-# def get_positions_from_params(params):
-#     position = get_position_from_params(params)
-#     return get_positions_from_position(position)
-
-# def get_positions_from_position(position):
-#     pregrasp_position = add_vectors(position, PREGRASP_OFFSET)
-#     pregrasp_position = add_vectors(pregrasp_position, TARGET_END_EFFECTOR_OFFSET)
-#     target_position = add_vectors(position, TARGET_END_EFFECTOR_OFFSET)
-#     return (pregrasp_position, target_position)
+#######################################################################################        
 
 def get_position_from_params(params):
     if (len(params)==4):
@@ -263,36 +305,6 @@ def offset_end_effector_from_lettuce(position):
     position[2] = position[2] + END_EFFECTOR_TO_LETTUCE_Z
     return position
 
-def park(params):
-    print("== Parking...") 
-    move_to(PARK_POSITION, PARK_ORIENTATION)  
-    #blade_cut()
-    #timer.sleep(5)
-    blade_release()
-    print("== Parked.")
-
-def do_pick(position):
-    pregrasp_position = add_vectors(position, PREGRASP_OFFSET)
-    pregrasp_position = add_vectors(pregrasp_position, TARGET_END_EFFECTOR_OFFSET)
-    target_position = add_vectors(position, TARGET_END_EFFECTOR_OFFSET)
-
-    if (reach_to_pregrasp_position(pregrasp_position)):
-        if (descend_on_lettuce(target_position)):
-            blade_cut()
-            rospy.sleep(2)
-            ascend_from_lettuce(pregrasp_position)
-            #return True
-
-    #rospy.loginfo("**** Problem with picking...")
-    # reach_to_pregrasp_position(pregrasp_position)
-    # descend_on_lettuce(position)        
-    # blade_cut()
-    # rospy.sleep(2.0)
-    # ascend_from_lettuce(pregrasp_position)
-
-    print("== Detect if lettuce is in the bucket ==")
-    return True
-
 def subtract_vectors(vector1, vector2):
     vector3 = [0.0, 0.0, 0.0]
     for i in range(0,len(vector1)):
@@ -305,92 +317,7 @@ def add_vectors(vector1, vector2):
         vector3[i] = vector1[i] + vector2[i]
     return vector3        
 
-def move_to(position, orientation):
-    global Manipulator
 
-    if DISABLE_MOVEMENT:
-        rospy.sleep(3)
-        return True
-
-    print("Moving...")
-    print "== Setting target"
-    pose_target = new_pose(position, orientation)
-    Manipulator.set_pose_target(pose_target)
-    #print Robot.get_current_state()
-
-    print("== Devising plan")
-    attempts = 0
-    trajectory = None
-    while (attempts < MAX_PLANNING_ATTEMPTS):
-        print "Planning attempt %s" % attempts
-        trajectory = Manipulator.plan()
-        #print trajectory
-        if (plan_has_succeeded(trajectory)):
-            break
-        attempts = attempts + 1    
-    if (not plan_has_succeeded(trajectory)):
-        print("********* Could not find plan after %s attempts ********" % attempts)
-        return False
-
-    print("== Moving to target pose...")
-    scaled_trajectory = scale_trajectory_speed(trajectory, VELOCITY_SCALE)
-    #result = Manipulator.execute(trajectory)
-    result = Manipulator.execute(scaled_trajectory)
-    print("----------------------------")
-    print result
-    print("----------------------------")
-    # This following get_current_state() call appears to be necessary to normalize 
-    # joint angles
-    workaround = Robot.get_current_state()
-    rospy.loginfo("== Move complete!")
-    return result
-    # return True
-
-def cartesian_move_to(position, orientation):
-    global Manipulator
-
-    if DISABLE_MOVEMENT:
-        rospy.sleep(3)
-        return True
-
-    end_effector_link = Manipulator.get_end_effector_link()
-    start_pose = Manipulator.get_current_pose(end_effector_link).pose
-    end_pose = deepcopy(new_pose(position, orientation))
-    waypoints=[]
-    # Don-t add start point! 
-    # http://answers.ros.org/question/253004/moveit-problem-error-trajectory-message-contains-waypoints-that-are-not-strictly-increasing-in-time/
-    #waypoints.append(deepcopy(start_pose))
-    waypoints.append(end_pose)
-
-    fraction = 0.0
-    max_tries = 100
-    attempts = 0
-    eef_step = 0.01
-    jump_threshold = 0.0
-    avoid_collisions = True
-    while fraction < 1.0 and attempts < max_tries:
-        (plan, fraction) = Manipulator.compute_cartesian_path(
-                                        waypoints,
-                                        eef_step,
-                                        jump_threshold,
-                                        avoid_collisions)
-        attempts += 1
-        if attempts % 100 == 0:
-            rospy.loginfo("Still attempting cartesian after " + str(attempts) + " attempts...")
-    if fraction==1.0:
-        rospy.loginfo("******** Successfully found Carteian trajectory.")
-        rospy.loginfo(start_pose.position)
-        rospy.loginfo(end_pose.position)
-        scaled_plan = scale_trajectory_speed(plan, VELOCITY_SCALE)
-        Manipulator.execute(scaled_plan)
-        #Manipulator.execute(plan)
-        workaround = Robot.get_current_state()
-        #rospy.sleep(2)
-        rospy.loginfo("******** Successfully executed Carteian trajectory.")
-        return True
-    else:
-        rospy.loginfo("Failed to find Cartesian trajectory after " + str(attempts) + " attempts...")
-        return False
 
 def plan_has_succeeded(trajectory):
     if (trajectory==None):
@@ -557,12 +484,10 @@ def callback(data):
     if (position != None):
         Vegebot_arm.set_target_position(position)
     if (command=='park'):
-#        park(params)
         Vegebot_arm.action_park()
     elif (command=='pick'):
         Vegebot_arm.action_full_pick_sequence()
     elif (command=='detect'):
-#        detect(params) 
         take_snapshot()
     elif (command=='detect_image'):
         Vegebot_arm.action_scan_position()
@@ -749,4 +674,89 @@ if __name__ == '__main__':
         #         return (True, "Pick and place worked!", "pick")
         #     else:
         # return (False, "Pick actions failed", "pick")    
+
+# def action(params):
+#     global Next_action, Last_action
+#     Next_action = Last_action
+#     next_action(params)
+
+# def next_action(params):
+#     global Next_action, Last_action, Current_reference_position
+
+#     print("==== Next action triggered ====")   
+#     position = get_position_from_params(params)
+#     pregrasp_position = add_vectors(position, PREGRASP_OFFSET)
+#     pregrasp_position = add_vectors(pregrasp_position, TARGET_END_EFFECTOR_OFFSET)
+#     target_position = add_vectors(position, TARGET_END_EFFECTOR_OFFSET)
+#     if (position != None):
+#         if (Next_action==None) or (Current_reference_position != position):
+#             Next_action = 'pregrasp'
+#         Last_action = Next_action        
+#         if Next_action=='pregrasp':
+#             success, status_message, Next_action = action_pregrasp(pregrasp_position)
+#         elif Next_action=="down":
+#             success, status_message, Next_action = action_down(target_position)  
+#         elif Next_action=="cut":
+#             success, status_message, Next_action = action_cut()  
+#         elif Next_action=="up":
+#             success, status_message, Next_action = action_up(pregrasp_position)  
+#         elif Next_action=="place":
+#             success, status_message, Next_action = action_place()  
+#         elif Next_action=="release":
+#             success, status_message, Next_action = action_release()  
+#         publish_status_message(status_message)    
+#         Current_reference_position = position         
+#     else:
+#         rospy.loginfo("***** Bad position sent from UI *****")
+#         pospy.loginfo("Cancelling next action.")
+
+# def do_place():
+#     print("== Moving end effector to place position...")
+#     move_to(PLACE_POSITION, PLACE_ORIENTATION)
+#     print("== Release lettuce...")
+#     blade_release()
+
+
+# def get_target_position_from_params(params):
+#     return get_position_from_params(params)
+
+# def get_positions_from_params(params):
+#     position = get_position_from_params(params)
+#     return get_positions_from_position(position)
+
+# def get_positions_from_position(position):
+#     pregrasp_position = add_vectors(position, PREGRASP_OFFSET)
+#     pregrasp_position = add_vectors(pregrasp_position, TARGET_END_EFFECTOR_OFFSET)
+#     target_position = add_vectors(position, TARGET_END_EFFECTOR_OFFSET)
+#     return (pregrasp_position, target_position)
+
+# def park(params):
+#     print("== Parking...") 
+#     move_to(PARK_POSITION, PARK_ORIENTATION)  
+#     #blade_cut()
+#     #timer.sleep(5)
+#     blade_release()
+#     print("== Parked.")
+
+# def do_pick(position):
+#     pregrasp_position = add_vectors(position, PREGRASP_OFFSET)
+#     pregrasp_position = add_vectors(pregrasp_position, TARGET_END_EFFECTOR_OFFSET)
+#     target_position = add_vectors(position, TARGET_END_EFFECTOR_OFFSET)
+
+#     if (reach_to_pregrasp_position(pregrasp_position)):
+#         if (descend_on_lettuce(target_position)):
+#             blade_cut()
+#             rospy.sleep(2)
+#             ascend_from_lettuce(pregrasp_position)
+#             #return True
+
+#     #rospy.loginfo("**** Problem with picking...")
+#     # reach_to_pregrasp_position(pregrasp_position)
+#     # descend_on_lettuce(position)        
+#     # blade_cut()
+#     # rospy.sleep(2.0)
+#     # ascend_from_lettuce(pregrasp_position)
+
+#     print("== Detect if lettuce is in the bucket ==")
+#     return True
 
