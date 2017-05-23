@@ -76,21 +76,35 @@ def publish_status_message(message):
         rospy.loginfo(message)
         Status_publisher.publish(message)
 
+def get_position_from_params(params):
+    if (len(params)==4):
+        x = float(params[1])
+        y = float(params[2])
+        z = float(params[3])
+        position = [x, y, z]
+        return position
+    else:
+        return None        
+
 ############################# Arm Controller #####################################        
 
 class ArmController():
 
     def __init__(self):
-        self.kinematics_controller = ArmKinematicsController()
+        self.kinematics_controller = ArmKinematicsControllerMoveIt()
+        self.movement_strategy = MovementStrategyDirect(self.kinematics_controller)
 
     def set_target_position(self, position):
+        position = self.offset_end_effector_from_lettuce(position)
+
         self.pregrasp_position = add_vectors(position, PREGRASP_OFFSET)
         self.pregrasp_position = add_vectors(self.pregrasp_position, TARGET_END_EFFECTOR_OFFSET)
         self.target_position = add_vectors(position, TARGET_END_EFFECTOR_OFFSET)
 
     def action_park(self):
         self.log("Parking...")
-        self.kinematics_controller.move_to(PARK_POSITION, PARK_ORIENTATION)  
+        #self.kinematics_controller.move_to(PARK_POSITION, PARK_ORIENTATION)  
+        self.movement_strategy.move_park()  
         if (blade_release()):
             return (True, "Park succeeded.", "pregrasp")
         else:
@@ -98,14 +112,14 @@ class ArmController():
 
     def action_pregrasp(self):
         self.log("Executing pregrasp...")
-        if (self.reach_to_pregrasp_position(self.pregrasp_position)):
+        if (self.movement_strategy.move_pregrasp(self.pregrasp_position)):
             return (True, "Pregrasp succeeded.", "down")
         else:
             return (False, "Pregrasp FAILED.", "pregrasp")
 
     def action_down(self):
         self.log("Executing down...")
-        if (self.descend_on_lettuce(self.target_position)):
+        if (self.movement_strategy.move_down(self.target_position)):
             return (True, "Down succeeded.", "cut")
         else:
             return (False, "Down FAILED.", "down")
@@ -119,14 +133,14 @@ class ArmController():
 
     def action_up(self):
         self.log("Executing up...")
-        if (self.ascend_from_lettuce(self.pregrasp_position)):
+        if (self.movement_strategy.move_up(self.pregrasp_position)):
             return (True, "Up succeeded.", "place")
         else:
             return (False, "Up FAILED.", "up")
 
     def action_place(self):
         self.log("Executing place...")
-        if (self.kinematics_controller.move_to(PLACE_POSITION, PLACE_ORIENTATION)):
+        if (self.movement_strategy.move_place()):
             return (True, "Place succeeded.", "release")
         else:
             return (False, "Place FAILED.", "place")
@@ -166,16 +180,32 @@ class ArmController():
     def action_scan_position(self):
         print("Moving to camera position...")
         position, orientation = reload_scan_position()
-        self.kinematics_controller.move_to(position, orientation)  
+        #self.kinematics_controller.move_to(position, orientation)  
+        self.movement_strategy.move_scan(position, orientation)
                         
     def log(self, message):
-        rospy.loginfo(message)        
+        rospy.loginfo(message)   
 
-    def reach_to_pregrasp_position(self, pregrasp_position):
+    def offset_end_effector_from_lettuce(self, position):
+        position[2] = position[2] + END_EFFECTOR_TO_LETTUCE_Z
+        return position
+
+
+#######################################################################################        
+
+class MovementStrategy():
+    def __init__(self, kinematics_controller):
+        self.kinematics_controller = kinematics_controller
+
+class MovementStrategyDirect(MovementStrategy):
+    def move_park(self):
+        return self.kinematics_controller.move_to(PARK_POSITION, PARK_ORIENTATION)  
+
+    def move_pregrasp(self, pregrasp_position):
         print("== Moving to pregrasp position...")
         return self.kinematics_controller.move_to(pregrasp_position, PICK_ORIENTATION)
 
-    def descend_on_lettuce(self, position):
+    def move_down(self, position):
         global CARTESIAN_APPROACH
         print("== Approach lettuce...")
         if (CARTESIAN_APPROACH):
@@ -183,7 +213,7 @@ class ArmController():
         else:
             return self.kinematics_controller.move_to(position, PICK_ORIENTATION)
 
-    def ascend_from_lettuce(self, pregrasp_position):
+    def move_up(self, pregrasp_position):
         global CARTESIAN_APPROACH
         print("== Retreat from lettuce...")
         if (CARTESIAN_APPROACH):
@@ -191,10 +221,13 @@ class ArmController():
         else:
             return self.kinematics_controller.move_to(pregrasp_position, PICK_ORIENTATION)
 
+    def move_place(self):
+        return self.kinematics_controller.move_to(PLACE_POSITION, PLACE_ORIENTATION)
 
-#######################################################################################        
+    def move_scan(self, position, orientation):
+        self.kinematics_controller.move_to(position, orientation)          
 
-class ArmKinematicsController():
+class ArmKinematicsControllerMoveIt():
 
     def __init__(self):
         pass
@@ -290,21 +323,6 @@ class ArmKinematicsController():
 
 #######################################################################################        
 
-def get_position_from_params(params):
-    if (len(params)==4):
-        x = float(params[1])
-        y = float(params[2])
-        z = float(params[3])
-        position = [x, y, z]
-        position = offset_end_effector_from_lettuce(position)
-        return position
-    else:
-        return None
-
-def offset_end_effector_from_lettuce(position):
-    position[2] = position[2] + END_EFFECTOR_TO_LETTUCE_Z
-    return position
-
 def subtract_vectors(vector1, vector2):
     vector3 = [0.0, 0.0, 0.0]
     for i in range(0,len(vector1)):
@@ -317,15 +335,12 @@ def add_vectors(vector1, vector2):
         vector3[i] = vector1[i] + vector2[i]
     return vector3        
 
-
-
 def plan_has_succeeded(trajectory):
     if (trajectory==None):
         return False
     if (len(trajectory.joint_trajectory.points)==0):
         return False
     return True        
-
 
 def new_pose(position, orientation):
     pose_target = geometry_msgs.msg.Pose()
