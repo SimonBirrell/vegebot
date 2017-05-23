@@ -24,6 +24,7 @@ VEGEBOT_STATUS_TOPIC = "/vegebot/status"
 IS_A_SIMULATION = False
 DISABLE_MOVEMENT = False
 DISABLE_IO = False 
+CARTESIAN_APPROACH = True
 
 PICK_POSITION = [ 1.0, 0.0, 0.5]
 PICK_ORIENTATION= [ 0.5, -0.5, -0.5, -0.5]
@@ -66,13 +67,9 @@ Next_action = None
 Last_action = None
 Current_reference_position = []
 Status_publisher = None
+Vegebot_arm = None
 
 # MoveIt routines        
-
-def pick_test(params):
-    print("Picking test...")
-    move_to(PICK_POSITION, PICK_ORIENTATION)  
-    print("== Picked.")
 
 def action(params):
     global Next_action, Last_action
@@ -120,47 +117,117 @@ def publish_status_message(message):
         rospy.loginfo(message)
         Status_publisher.publish(message)
 
-def action_pregrasp(pregrasp_position):
-    rospy.loginfo("Executing pregrasp...")
-    if (reach_to_pregrasp_position(pregrasp_position)):
-        return (True, "Pregrasp succeeded.", "down")
-    else:
-        return (False, "Pregrasp FAILED.", "pregrasp")
+############################# Arm Controller #####################################        
 
-def action_down(target_position):
-    rospy.loginfo("Executing down...")
-    if (descend_on_lettuce(target_position)):
-        return (True, "Down succeeded.", "cut")
-    else:
-        return (False, "Down FAILED.", "down")
+class ArmController():
 
-def action_cut():
-    rospy.loginfo("Executing cut...")
-    if (blade_cut()):
-        return (True, "Cut succeeded.", "up")
-    else:
-        return (False, "Cut FAILED.", "cut")
+    def __init__(self):
+        pass
 
-def action_up(pregrasp_position):
-    rospy.loginfo("Executing up...")
-    if (ascend_from_lettuce(pregrasp_position)):
-        return (True, "Up succeeded.", "place")
-    else:
-        return (False, "Up FAILED.", "up")
+    def action_pregrasp(self, pregrasp_position):
+        self.log("Executing pregrasp...")
+        if (self.reach_to_pregrasp_position(pregrasp_position)):
+            return (True, "Pregrasp succeeded.", "down")
+        else:
+            return (False, "Pregrasp FAILED.", "pregrasp")
 
-def action_place():
-    rospy.loginfo("Executing place...")
-    if (move_to(PLACE_POSITION, PLACE_ORIENTATION)):
-        return (True, "Place succeeded.", "release")
-    else:
-        return (False, "Place FAILED.", "place")
+    def action_down(self, target_position):
+        self.log("Executing down...")
+        if (self.descend_on_lettuce(target_position)):
+            return (True, "Down succeeded.", "cut")
+        else:
+            return (False, "Down FAILED.", "down")
 
-def action_release():
-    rospy.loginfo("Executing release...")
-    if (blade_release()):
-        return (True, "Release succeeded.", "pregrasp")
-    else:
-        return (False, "Release FAILED.", "release")
+    def action_cut(self):
+        self.log("Executing cut...")
+        if (blade_cut()):
+            return (True, "Cut succeeded.", "up")
+        else:
+            return (False, "Cut FAILED.", "cut")
+
+    def action_up(self, pregrasp_position):
+        self.log("Executing up...")
+        if (self.ascend_from_lettuce(pregrasp_position)):
+            return (True, "Up succeeded.", "place")
+        else:
+            return (False, "Up FAILED.", "up")
+
+    def action_place(self):
+        self.log("Executing place...")
+        if (move_to(PLACE_POSITION, PLACE_ORIENTATION)):
+            return (True, "Place succeeded.", "release")
+        else:
+            return (False, "Place FAILED.", "place")
+
+    def action_release(self):
+        self.log("Executing release...")
+        if (blade_release()):
+            return (True, "Release succeeded.", "pregrasp")
+        else:
+            return (False, "Release FAILED.", "release")
+
+    def action_full_pick_sequence(self, pregrasp_position, target_position):
+        self.log("Executing full pick and place sequence...")
+        it_worked, message, next_state = self.action_pregrasp(pregrasp_position)
+        if (it_worked):
+            it_worked, message, next_state = self.action_down(target_position)
+            if (it_worked):
+                it_worked, message, next_state = self.action_cut()
+                if (it_worked):
+                    it_worked, message, next_state = self.action_up(pregrasp_position)
+                    if (it_worked):
+                        it_worked, message, next_state = self.action_place()
+                        if (it_worked):
+                            it_worked, message, next_state = self.action_release()
+                        else:
+                            return (False, "Place failed.", "place")
+                    else:    
+                        return (False, "Up failed.", "place")
+                else:
+                    return (False, "Cut failed.", "place")
+            else:
+                return (False, "Down failed.", "place")
+        else:
+            return (False, "Pregrasp failed.", "place")
+        return (it_worked, message, next_state) 
+
+    def action_scan_position(self):
+        print("Moving to camera position...")
+        position, orientation = reload_scan_position()
+        move_to(position, orientation)  
+                        
+    def log(self, message):
+        rospy.loginfo(message)        
+
+    def reach_to_pregrasp_position(self, pregrasp_position):
+        print("== Moving to pregrasp position...")
+        return move_to(pregrasp_position, PICK_ORIENTATION)
+
+    def descend_on_lettuce(self, position):
+        global CARTESIAN_APPROACH
+        print("== Approach lettuce...")
+        if (CARTESIAN_APPROACH):
+            return cartesian_move_to(position, PICK_ORIENTATION)
+        else:
+            return move_to(position, PICK_ORIENTATION)
+
+    def ascend_from_lettuce(self, pregrasp_position):
+        global CARTESIAN_APPROACH
+        print("== Retreat from lettuce...")
+        if (CARTESIAN_APPROACH):
+            return cartesian_move_to(pregrasp_position, PICK_ORIENTATION)
+        else:
+            return move_to(pregrasp_position, PICK_ORIENTATION)
+
+
+#######################################################################################        
+
+def do_place():
+    print("== Moving end effector to place position...")
+    move_to(PLACE_POSITION, PLACE_ORIENTATION)
+    print("== Release lettuce...")
+    blade_release()
+
 
 def get_position_from_params(params):
     if (len(params)==4):
@@ -173,23 +240,6 @@ def get_position_from_params(params):
     else:
         return None
 
-def pick(params):
-    print("Picking...")
-    print params
-    if (len(params)==4):
-        x = float(params[1])
-        y = float(params[2])
-        z = float(params[3])
-        position = [x, y, z]
-        position = offset_end_effector_from_lettuce(position)
-        #move_to(position, PICK_ORIENTATION)  
-        lettuce_picked = do_pick(position)
-        if (lettuce_picked):
-            do_place()
-    else:
-        print("*** WARNING: Need 1+3 parameters ***")
-        print("Received " + len(params))
-    print("== Picked.")
 
 def offset_end_effector_from_lettuce(position):
     position[2] = position[2] + END_EFFECTOR_TO_LETTUCE_Z
@@ -224,32 +274,6 @@ def do_pick(position):
 
     print("== Detect if lettuce is in the bucket ==")
     return True
-
-def reach_to_pregrasp_position(pregrasp_position):
-    print("== Moving to pregrasp position...")
-    return move_to(pregrasp_position, PICK_ORIENTATION)
-
-CARTESIAN_APPROACH = True
-
-def descend_on_lettuce(position):
-    print("== Approach lettuce...")
-    if (CARTESIAN_APPROACH):
-        return cartesian_move_to(position, PICK_ORIENTATION)
-    else:
-        return move_to(position, PICK_ORIENTATION)
-
-def ascend_from_lettuce(pregrasp_position):
-    print("== Retreat from lettuce...")
-    if (CARTESIAN_APPROACH):
-        return cartesian_move_to(pregrasp_position, PICK_ORIENTATION)
-    else:
-        return move_to(pregrasp_position, PICK_ORIENTATION)
-
-def do_place():
-    print("== Moving end effector to place position...")
-    move_to(PLACE_POSITION, PLACE_ORIENTATION)
-    print("== Release lettuce...")
-    blade_release()
 
 def subtract_vectors(vector1, vector2):
     vector3 = [0.0, 0.0, 0.0]
@@ -402,19 +426,19 @@ def detect(params):
     # This is a dummy snapshot
     take_snapshot()
 
-def detect_image(params):
-    print("Moving to camera position...")
-    move_to(SCAN_POSITION, SCAN_ORIENTATION)  
-    print("Generating fake image...")
-    trigger_fake_image_snapshot()
+# def detect_image(params):
+#     print("Moving to camera position...")
+#     move_to(SCAN_POSITION, SCAN_ORIENTATION)  
+#     print("Generating fake image...")
+#     trigger_fake_image_snapshot()
 
-def detect_camera(params):
-    print("Moving to camera position...")
-    position, orientation = reload_scan_position()
-    #move_to(SCAN_POSITION, SCAN_ORIENTATION)  
-    move_to(position, orientation)  
-    print("Generating fake image...")
-    trigger_camera_snapshot()
+# def detect_camera(params):
+#     print("Moving to camera position...")
+#     position, orientation = reload_scan_position()
+#     #move_to(SCAN_POSITION, SCAN_ORIENTATION)  
+#     move_to(position, orientation)  
+#     print("Generating fake image...")
+#     trigger_camera_snapshot()
 
 def reload_scan_position():
     x = rospy.get_param(SCAN_POSITION_PARAM + '/x')
@@ -511,37 +535,40 @@ def callback(data):
     rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
     params = data.data.split()
     command = params[0]
-    if (command=='pick_test'):
-        pick_test(params)
-    elif (command=='park'):
+    if (command=='park'):
         park(params)
     elif (command=='pick'):
-        pick(params) 
+        pregrasp_position, target_position = get_positions_from_params(params)
+        Vegebot_arm.action_full_pick_sequence(pregrasp_position, target_position)
     elif (command=='detect'):
         detect(params) 
     elif (command=='detect_image'):
-        detect_image(params) 
+        Vegebot_arm.action_scan_position()
+        print("Generating fake image...")
+        trigger_fake_image_snapshot()
     elif (command=='detect_camera'):
-        detect_camera(params) 
+        Vegebot_arm.action_scan_position()
+        print("Generating fake image...")
+        trigger_camera_snapshot()
     elif (command=='next_action'):
         next_action(params) 
     elif (command=='action'):
         action(params) 
     elif (command=='pregrasp'):
         pregrasp_position, target_position = get_positions_from_params(params)
-        action_pregrasp(pregrasp_position) 
+        Vegebot_arm.action_pregrasp(pregrasp_position) 
     elif (command=='down'):
         pregrasp_position, target_position = get_positions_from_params(params)
-        action_down(target_position) 
+        Vegebot_arm.action_down(target_position) 
     elif (command=='cut'):
-        action_cut() 
+        Vegebot_arm.action_cut() 
     elif (command=='up'):
         pregrasp_position, target_position = get_positions_from_params(params)
-        action_up(pregrasp_position) 
+        Vegebot_arm.action_up(pregrasp_position) 
     elif (command=='place'):
-        action_place() 
+        Vegebot_arm.action_place() 
     elif (command=='release'):
-        action_release() 
+        Vegebot_arm.action_release() 
 
 def prepare_snapshot_publisher():
     global Snapshot_publisher 
@@ -552,6 +579,10 @@ def prepare_snapshot_publisher():
 def set_up_status_topic():
     global Status_publisher         
     Status_publisher = rospy.Publisher(VEGEBOT_STATUS_TOPIC, String, queue_size=10)
+
+
+
+####################### MOVEIT STUFF STARTS HERE ################################################    
 
 def scale_trajectory_speed(traj, scale):
        # Create a new trajectory object
@@ -652,6 +683,7 @@ def set_trajectory_speed(traj, speed):
 # Main Loop of module
 
 if __name__ == '__main__':
+    global Vegebot_arm
     print("Vegebot_Commander is listening for commands.")
     get_config()
     set_defaults()
@@ -659,7 +691,43 @@ if __name__ == '__main__':
     set_blade_voltage()
     blade_cut()
     blade_release()
+    Vegebot_arm = ArmController()
     start_moveit()
 
     listener()
+
+    # def pick(self, params):
+    #     print("Picking...")
+    #     print params
+    #     if (len(params)==4):
+    #         x = float(params[1])
+    #         y = float(params[2])
+    #         z = float(params[3])
+    #         position = [x, y, z]
+    #         position = offset_end_effector_from_lettuce(position)
+    #         #move_to(position, PICK_ORIENTATION)  
+    #         lettuce_picked = do_pick(position)
+    #         if (lettuce_picked):
+    #             do_place()
+    #     else:
+    #         print("*** WARNING: Need 1+3 parameters ***")
+    #         print("Received " + len(params))
+    #     print("== Picked.")
+
+
+# def pick_test(params):
+#     print("Picking test...")
+#     move_to(PICK_POSITION, PICK_ORIENTATION)  
+#     print("== Picked.")
+
+    # def action_scan_position1(self):
+    #     print("Moving to camera position...")
+    #     move_to(SCAN_POSITION, SCAN_ORIENTATION)  
+            
+        # lettuce_picked = do_pick(target_position)
+        # if (lettuce_picked):
+        #     if (do_place()):
+        #         return (True, "Pick and place worked!", "pick")
+        #     else:
+        # return (False, "Pick actions failed", "pick")    
 
