@@ -71,47 +71,40 @@ Vegebot_arm = None
 
 # MoveIt routines        
 
-def action(params):
-    global Next_action, Last_action
-    Next_action = Last_action
-    next_action(params)
+# def action(params):
+#     global Next_action, Last_action
+#     Next_action = Last_action
+#     next_action(params)
 
-def get_positions_from_params(params):
-    position = get_position_from_params(params)
-    pregrasp_position = add_vectors(position, PREGRASP_OFFSET)
-    pregrasp_position = add_vectors(pregrasp_position, TARGET_END_EFFECTOR_OFFSET)
-    target_position = add_vectors(position, TARGET_END_EFFECTOR_OFFSET)
-    return (pregrasp_position, target_position)
+# def next_action(params):
+#     global Next_action, Last_action, Current_reference_position
 
-def next_action(params):
-    global Next_action, Last_action, Current_reference_position
-
-    print("==== Next action triggered ====")   
-    position = get_position_from_params(params)
-    pregrasp_position = add_vectors(position, PREGRASP_OFFSET)
-    pregrasp_position = add_vectors(pregrasp_position, TARGET_END_EFFECTOR_OFFSET)
-    target_position = add_vectors(position, TARGET_END_EFFECTOR_OFFSET)
-    if (position != None):
-        if (Next_action==None) or (Current_reference_position != position):
-            Next_action = 'pregrasp'
-        Last_action = Next_action        
-        if Next_action=='pregrasp':
-            success, status_message, Next_action = action_pregrasp(pregrasp_position)
-        elif Next_action=="down":
-            success, status_message, Next_action = action_down(target_position)  
-        elif Next_action=="cut":
-            success, status_message, Next_action = action_cut()  
-        elif Next_action=="up":
-            success, status_message, Next_action = action_up(pregrasp_position)  
-        elif Next_action=="place":
-            success, status_message, Next_action = action_place()  
-        elif Next_action=="release":
-            success, status_message, Next_action = action_release()  
-        publish_status_message(status_message)    
-        Current_reference_position = position         
-    else:
-        rospy.loginfo("***** Bad position sent from UI *****")
-        pospy.loginfo("Cancelling next action.")
+#     print("==== Next action triggered ====")   
+#     position = get_position_from_params(params)
+#     pregrasp_position = add_vectors(position, PREGRASP_OFFSET)
+#     pregrasp_position = add_vectors(pregrasp_position, TARGET_END_EFFECTOR_OFFSET)
+#     target_position = add_vectors(position, TARGET_END_EFFECTOR_OFFSET)
+#     if (position != None):
+#         if (Next_action==None) or (Current_reference_position != position):
+#             Next_action = 'pregrasp'
+#         Last_action = Next_action        
+#         if Next_action=='pregrasp':
+#             success, status_message, Next_action = action_pregrasp(pregrasp_position)
+#         elif Next_action=="down":
+#             success, status_message, Next_action = action_down(target_position)  
+#         elif Next_action=="cut":
+#             success, status_message, Next_action = action_cut()  
+#         elif Next_action=="up":
+#             success, status_message, Next_action = action_up(pregrasp_position)  
+#         elif Next_action=="place":
+#             success, status_message, Next_action = action_place()  
+#         elif Next_action=="release":
+#             success, status_message, Next_action = action_release()  
+#         publish_status_message(status_message)    
+#         Current_reference_position = position         
+#     else:
+#         rospy.loginfo("***** Bad position sent from UI *****")
+#         pospy.loginfo("Cancelling next action.")
 
 def publish_status_message(message):
         rospy.loginfo(message)
@@ -124,16 +117,29 @@ class ArmController():
     def __init__(self):
         pass
 
-    def action_pregrasp(self, pregrasp_position):
+    def set_target_position(self, position):
+        self.pregrasp_position = add_vectors(position, PREGRASP_OFFSET)
+        self.pregrasp_position = add_vectors(self.pregrasp_position, TARGET_END_EFFECTOR_OFFSET)
+        self.target_position = add_vectors(position, TARGET_END_EFFECTOR_OFFSET)
+
+    def action_park(self):
+        self.log("Parking...")
+        move_to(PARK_POSITION, PARK_ORIENTATION)  
+        if (blade_release()):
+            return (True, "Park succeeded.", "pregrasp")
+        else:
+            return (False, "Release failed.", "release")
+
+    def action_pregrasp(self):
         self.log("Executing pregrasp...")
-        if (self.reach_to_pregrasp_position(pregrasp_position)):
+        if (self.reach_to_pregrasp_position(self.pregrasp_position)):
             return (True, "Pregrasp succeeded.", "down")
         else:
             return (False, "Pregrasp FAILED.", "pregrasp")
 
-    def action_down(self, target_position):
+    def action_down(self):
         self.log("Executing down...")
-        if (self.descend_on_lettuce(target_position)):
+        if (self.descend_on_lettuce(self.target_position)):
             return (True, "Down succeeded.", "cut")
         else:
             return (False, "Down FAILED.", "down")
@@ -145,9 +151,9 @@ class ArmController():
         else:
             return (False, "Cut FAILED.", "cut")
 
-    def action_up(self, pregrasp_position):
+    def action_up(self):
         self.log("Executing up...")
-        if (self.ascend_from_lettuce(pregrasp_position)):
+        if (self.ascend_from_lettuce(self.pregrasp_position)):
             return (True, "Up succeeded.", "place")
         else:
             return (False, "Up FAILED.", "up")
@@ -166,15 +172,15 @@ class ArmController():
         else:
             return (False, "Release FAILED.", "release")
 
-    def action_full_pick_sequence(self, pregrasp_position, target_position):
+    def action_full_pick_sequence(self):
         self.log("Executing full pick and place sequence...")
-        it_worked, message, next_state = self.action_pregrasp(pregrasp_position)
+        it_worked, message, next_state = self.action_pregrasp()
         if (it_worked):
-            it_worked, message, next_state = self.action_down(target_position)
+            it_worked, message, next_state = self.action_down()
             if (it_worked):
                 it_worked, message, next_state = self.action_cut()
                 if (it_worked):
-                    it_worked, message, next_state = self.action_up(pregrasp_position)
+                    it_worked, message, next_state = self.action_up()
                     if (it_worked):
                         it_worked, message, next_state = self.action_place()
                         if (it_worked):
@@ -222,12 +228,25 @@ class ArmController():
 
 #######################################################################################        
 
-def do_place():
-    print("== Moving end effector to place position...")
-    move_to(PLACE_POSITION, PLACE_ORIENTATION)
-    print("== Release lettuce...")
-    blade_release()
+# def do_place():
+#     print("== Moving end effector to place position...")
+#     move_to(PLACE_POSITION, PLACE_ORIENTATION)
+#     print("== Release lettuce...")
+#     blade_release()
 
+
+# def get_target_position_from_params(params):
+#     return get_position_from_params(params)
+
+# def get_positions_from_params(params):
+#     position = get_position_from_params(params)
+#     return get_positions_from_position(position)
+
+# def get_positions_from_position(position):
+#     pregrasp_position = add_vectors(position, PREGRASP_OFFSET)
+#     pregrasp_position = add_vectors(pregrasp_position, TARGET_END_EFFECTOR_OFFSET)
+#     target_position = add_vectors(position, TARGET_END_EFFECTOR_OFFSET)
+#     return (pregrasp_position, target_position)
 
 def get_position_from_params(params):
     if (len(params)==4):
@@ -239,7 +258,6 @@ def get_position_from_params(params):
         return position
     else:
         return None
-
 
 def offset_end_effector_from_lettuce(position):
     position[2] = position[2] + END_EFFECTOR_TO_LETTUCE_Z
@@ -535,13 +553,17 @@ def callback(data):
     rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
     params = data.data.split()
     command = params[0]
+    position = get_position_from_params(params)
+    if (position != None):
+        Vegebot_arm.set_target_position(position)
     if (command=='park'):
-        park(params)
+#        park(params)
+        Vegebot_arm.action_park()
     elif (command=='pick'):
-        pregrasp_position, target_position = get_positions_from_params(params)
-        Vegebot_arm.action_full_pick_sequence(pregrasp_position, target_position)
+        Vegebot_arm.action_full_pick_sequence()
     elif (command=='detect'):
-        detect(params) 
+#        detect(params) 
+        take_snapshot()
     elif (command=='detect_image'):
         Vegebot_arm.action_scan_position()
         print("Generating fake image...")
@@ -550,21 +572,18 @@ def callback(data):
         Vegebot_arm.action_scan_position()
         print("Generating fake image...")
         trigger_camera_snapshot()
-    elif (command=='next_action'):
-        next_action(params) 
-    elif (command=='action'):
-        action(params) 
+    # elif (command=='next_action'):
+    #     next_action(params) 
+    # elif (command=='action'):
+    #     action(params) 
     elif (command=='pregrasp'):
-        pregrasp_position, target_position = get_positions_from_params(params)
-        Vegebot_arm.action_pregrasp(pregrasp_position) 
+        Vegebot_arm.action_pregrasp() 
     elif (command=='down'):
-        pregrasp_position, target_position = get_positions_from_params(params)
-        Vegebot_arm.action_down(target_position) 
+        Vegebot_arm.action_down() 
     elif (command=='cut'):
         Vegebot_arm.action_cut() 
     elif (command=='up'):
-        pregrasp_position, target_position = get_positions_from_params(params)
-        Vegebot_arm.action_up(pregrasp_position) 
+        Vegebot_arm.action_up() 
     elif (command=='place'):
         Vegebot_arm.action_place() 
     elif (command=='release'):
