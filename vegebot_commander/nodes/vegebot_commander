@@ -252,9 +252,9 @@ class ArmKinematicsControllerMoveIt():
         attempts = 0
         trajectory = None
         while (attempts < MAX_PLANNING_ATTEMPTS):
+            print
             print "Planning attempt %s" % attempts
             trajectory = Manipulator.plan()
-            #print trajectory
             if (self.plan_has_succeeded(trajectory)):
                 break
             attempts = attempts + 1    
@@ -264,7 +264,6 @@ class ArmKinematicsControllerMoveIt():
 
         print("== Moving to target pose...")
         scaled_trajectory = self.scale_trajectory_speed(trajectory, VELOCITY_SCALE)
-        #result = Manipulator.execute(trajectory)
         result = Manipulator.execute(scaled_trajectory)
         print("----------------------------")
         print result
@@ -313,9 +312,7 @@ class ArmKinematicsControllerMoveIt():
             rospy.loginfo(end_pose.position)
             scaled_plan = self.scale_trajectory_speed(plan, VELOCITY_SCALE)
             Manipulator.execute(scaled_plan)
-            #Manipulator.execute(plan)
             workaround = Robot.get_current_state()
-            #rospy.sleep(2)
             rospy.loginfo("******** Successfully executed Carteian trajectory.")
             return True
         else:
@@ -504,21 +501,21 @@ def get_config():
         DISABLE_IO = True
 
 def set_defaults():
-    initialize_scan_position()        
+    initialize_scan_position()   
+
+def set_up_ros_node():         
+    rospy.init_node('vegebot_commander', anonymous=True)
     
-def listener():
+def set_up_command_listener():
     print("== Setting up listener...")
     # In ROS, nodes are uniquely named. If two nodes with the same
     # node are launched, the previous one is kicked off. The
     # anonymous=True flag means that rospy will choose a unique
     # name for our 'listener' node so that multiple listeners can
     # run simultaneously.
-    rospy.init_node('vegebot_commander', anonymous=True)
-    prepare_snapshot_publisher()
+    #rospy.init_node('vegebot_commander', anonymous=True)
+    #prepare_snapshot_publisher()
     rospy.Subscriber("vegebot_commands", String, callback)
-
-    # spin() simply keeps python from exiting until this node is stopped
-    rospy.spin()
 
 def callback(data):
     print
@@ -555,7 +552,7 @@ def callback(data):
     elif (command=='release'):
         Vegebot_arm.action_release() 
 
-def prepare_snapshot_publisher():
+def set_up_snapshot_publisher():
     global Snapshot_publisher 
     Snapshot_publisher = rospy.Publisher('/vegebot/lettuce_test/take_snapshot',
                                             String,
@@ -577,9 +574,13 @@ if __name__ == '__main__':
     print("Vegebot_Commander is listening for commands.")
     get_config()
     set_defaults()
-    set_up_status_topic()
-    #set_blade_voltage()
+    set_up_ros_node()
+
     Vegebot_arm = ArmController()
 
-    listener()
+    set_up_status_topic()
+    set_up_snapshot_publisher()
+    set_up_command_listener()
+
+    rospy.spin()
 
