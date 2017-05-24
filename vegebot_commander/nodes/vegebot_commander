@@ -55,13 +55,14 @@ MAX_PLANNING_ATTEMPTS = 10
 UR10_DIGITAL_IO_OUT = 1
 UR10_BLADE_PIN8 = 16
 UR10_BLADE_PIN9 = 17
+UR10_DIGITAL_SET_VOLTAGE=4
+UR10_DIGITAL_IO_VOLTAGE=12
 
 VELOCITY_SCALE = 0.75
 
 Robot = 0
 Scene = 0
 Manipulator = 0
-Display_trajectory_publisher = 0
 Snapshot_publisher = 0
 Next_action = None
 Last_action = None
@@ -72,25 +73,12 @@ Vegebot_arm = None
 # MoveIt routines        
 
 
-def publish_status_message(message):
-        rospy.loginfo(message)
-        Status_publisher.publish(message)
-
-def get_position_from_params(params):
-    if (len(params)==4):
-        x = float(params[1])
-        y = float(params[2])
-        z = float(params[3])
-        position = [x, y, z]
-        return position
-    else:
-        return None        
-
 ############################# Arm Controller #####################################        
 
 class ArmController():
 
     def __init__(self):
+        self.blade_strategy = BladeControllerUr10()
         self.kinematics_controller = ArmKinematicsControllerMoveIt()
         self.movement_strategy = MovementStrategyDirect(self.kinematics_controller)
 
@@ -105,7 +93,7 @@ class ArmController():
         self.log("Parking...")
         #self.kinematics_controller.move_to(PARK_POSITION, PARK_ORIENTATION)  
         self.movement_strategy.move_park()  
-        if (blade_release()):
+        if (self.blade_strategy.blade_release()):
             return (True, "Park succeeded.", "pregrasp")
         else:
             return (False, "Release failed.", "release")
@@ -126,7 +114,7 @@ class ArmController():
 
     def action_cut(self):
         self.log("Executing cut...")
-        if (blade_cut()):
+        if (self.blade_strategy.blade_cut()):
             return (True, "Cut succeeded.", "up")
         else:
             return (False, "Cut FAILED.", "cut")
@@ -147,7 +135,7 @@ class ArmController():
 
     def action_release(self):
         self.log("Executing release...")
-        if (blade_release()):
+        if (self.blade_strategy.blade_release()):
             return (True, "Release succeeded.", "pregrasp")
         else:
             return (False, "Release FAILED.", "release")
@@ -227,10 +215,25 @@ class MovementStrategyDirect(MovementStrategy):
     def move_scan(self, position, orientation):
         self.kinematics_controller.move_to(position, orientation)          
 
+#######################################################################################        
+
 class ArmKinematicsControllerMoveIt():
 
     def __init__(self):
-        pass
+        self.start_moveit()
+
+    def start_moveit(self):
+        global Robot, Scene, Manipulator   
+
+        print("== Setting up MoveIt!")
+        moveit_commander.roscpp_initialize(sys.argv)
+        Robot = RobotCommander() 
+        print("== Getting Robot Groups")
+        print(Robot.get_group_names())
+        Scene = PlanningSceneInterface()
+        Manipulator = MoveGroupCommander("manipulator")
+        Manipulator.allow_replanning(True)
+        print Robot.get_current_state()
 
     def move_to(self, position, orientation):
         global Manipulator
@@ -241,7 +244,7 @@ class ArmKinematicsControllerMoveIt():
 
         print("Moving...")
         print "== Setting target"
-        pose_target = new_pose(position, orientation)
+        pose_target = self.new_pose(position, orientation)
         Manipulator.set_pose_target(pose_target)
         #print Robot.get_current_state()
 
@@ -252,15 +255,15 @@ class ArmKinematicsControllerMoveIt():
             print "Planning attempt %s" % attempts
             trajectory = Manipulator.plan()
             #print trajectory
-            if (plan_has_succeeded(trajectory)):
+            if (self.plan_has_succeeded(trajectory)):
                 break
             attempts = attempts + 1    
-        if (not plan_has_succeeded(trajectory)):
+        if (not self.plan_has_succeeded(trajectory)):
             print("********* Could not find plan after %s attempts ********" % attempts)
             return False
 
         print("== Moving to target pose...")
-        scaled_trajectory = scale_trajectory_speed(trajectory, VELOCITY_SCALE)
+        scaled_trajectory = self.scale_trajectory_speed(trajectory, VELOCITY_SCALE)
         #result = Manipulator.execute(trajectory)
         result = Manipulator.execute(scaled_trajectory)
         print("----------------------------")
@@ -282,7 +285,7 @@ class ArmKinematicsControllerMoveIt():
 
         end_effector_link = Manipulator.get_end_effector_link()
         start_pose = Manipulator.get_current_pose(end_effector_link).pose
-        end_pose = deepcopy(new_pose(position, orientation))
+        end_pose = deepcopy(self.new_pose(position, orientation))
         waypoints=[]
         # Don-t add start point! 
         # http://answers.ros.org/question/253004/moveit-problem-error-trajectory-message-contains-waypoints-that-are-not-strictly-increasing-in-time/
@@ -308,7 +311,7 @@ class ArmKinematicsControllerMoveIt():
             rospy.loginfo("******** Successfully found Carteian trajectory.")
             rospy.loginfo(start_pose.position)
             rospy.loginfo(end_pose.position)
-            scaled_plan = scale_trajectory_speed(plan, VELOCITY_SCALE)
+            scaled_plan = self.scale_trajectory_speed(plan, VELOCITY_SCALE)
             Manipulator.execute(scaled_plan)
             #Manipulator.execute(plan)
             workaround = Robot.get_current_state()
@@ -319,9 +322,136 @@ class ArmKinematicsControllerMoveIt():
             rospy.loginfo("Failed to find Cartesian trajectory after " + str(attempts) + " attempts...")
             return False
 
+    def plan_has_succeeded(self, trajectory):
+        if (trajectory==None):
+            return False
+        if (len(trajectory.joint_trajectory.points)==0):
+            return False
+        return True        
 
+    def new_pose(self, position, orientation):
+        pose_target = geometry_msgs.msg.Pose()
+        pose_target.orientation.x = orientation[0] #0.0
+        pose_target.orientation.y = orientation[1] # 0.0
+        pose_target.orientation.z = orientation[2] # 0.0
+        pose_target.orientation.w = orientation[3] # 1.0
+        pose_target.position.x = position[0] + URF10_ORIGIN[0]
+        pose_target.position.y = position[1] + URF10_ORIGIN[1]
+        pose_target.position.z = position[2] + URF10_ORIGIN[2]
+        return pose_target
+
+    def scale_trajectory_speed(self, traj, scale):
+           # Create a new trajectory object
+           new_traj = RobotTrajectory()
+           
+           # Initialize the new trajectory to be the same as the input trajectory
+           new_traj.joint_trajectory = traj.joint_trajectory
+           
+           # Get the number of joints involved
+           n_joints = len(traj.joint_trajectory.joint_names)
+           
+           # Get the number of points on the trajectory
+           n_points = len(traj.joint_trajectory.points)
+            
+           # Store the trajectory points
+           points = list(traj.joint_trajectory.points)
+           
+           # Cycle through all points and joints and scale the time from start,
+           # as well as joint speed and acceleration
+           for i in range(n_points):
+               point = JointTrajectoryPoint()
+               
+               # The joint positions are not scaled so pull them out first
+               point.positions = traj.joint_trajectory.points[i].positions
+
+               # Next, scale the time_from_start for this point
+               point.time_from_start = traj.joint_trajectory.points[i].time_from_start / scale
+               
+               # Get the joint velocities for this point
+               point.velocities = list(traj.joint_trajectory.points[i].velocities)
+               
+               # Get the joint accelerations for this point
+               point.accelerations = list(traj.joint_trajectory.points[i].accelerations)
+               
+               # Scale the velocity and acceleration for each joint at this point
+               for j in range(n_joints):
+                   point.velocities[j] = point.velocities[j] * scale
+                   point.accelerations[j] = point.accelerations[j] * scale * scale
+            
+               # Store the scaled trajectory point
+               points[i] = point
+
+           # Assign the modified points to the new trajectory
+           new_traj.joint_trajectory.points = points
+
+           # Return the new trajecotry
+           return new_traj
+       
 
 #######################################################################################        
+
+class BladeController():
+    def __init__(self):
+        pass
+
+class BladeControllerUr10(BladeController):
+    def __init__(self):
+        self.set_blade_voltage()
+        self.blade_cut()
+        self.blade_release()
+
+    def set_blade_voltage(self):
+        print("Setting voltage of digital IO")
+        if DISABLE_IO:
+            return
+        io_msg = SetIO()
+        io_msg.fun = UR10_DIGITAL_SET_VOLTAGE
+        io_msg.state = UR10_DIGITAL_IO_VOLTAGE    
+        service_proxy = rospy.ServiceProxy('/ur_driver/set_io', io_msg)
+        service_proxy(4, 8, 12)
+
+    def blade_cut(self):
+        print("== ACTIVATING BLADE!!!")
+        self.blade_IO(UR10_BLADE_PIN8, 0)
+        self.blade_IO(UR10_BLADE_PIN9, 1)
+        return True
+
+    def blade_release(self):    
+        print("== RETRACTING BLADE!!!")
+        self.blade_IO(UR10_BLADE_PIN8, 1)
+        self.blade_IO(UR10_BLADE_PIN9, 0)
+        return True
+
+    def blade_IO(self, pin, voltage_level):
+        print("BladeIO Pin " + str(pin) + " to level " + str(voltage_level))
+        if DISABLE_IO:
+            return
+        # https://github.com/ThomasTimm/ur_modern_driver/issues/61 
+        io_msg = SetIO()
+        io_msg.fun = UR10_DIGITAL_IO_OUT
+        #io_msg.pin = UR10_BLADE_PIN
+        io_msg.pin = pin
+        io_msg.state = voltage_level    
+        service_proxy = rospy.ServiceProxy('/ur_driver/set_io', SetIO)
+        service_proxy(UR10_DIGITAL_IO_OUT, pin, voltage_level)
+
+
+
+#######################################################################################
+
+def publish_status_message(message):
+        rospy.loginfo(message)
+        Status_publisher.publish(message)
+
+def get_position_from_params(params):
+    if (len(params)==4):
+        x = float(params[1])
+        y = float(params[2])
+        z = float(params[3])
+        position = [x, y, z]
+        return position
+    else:
+        return None        
 
 def subtract_vectors(vector1, vector2):
     vector3 = [0.0, 0.0, 0.0]
@@ -335,70 +465,9 @@ def add_vectors(vector1, vector2):
         vector3[i] = vector1[i] + vector2[i]
     return vector3        
 
-def plan_has_succeeded(trajectory):
-    if (trajectory==None):
-        return False
-    if (len(trajectory.joint_trajectory.points)==0):
-        return False
-    return True        
-
-def new_pose(position, orientation):
-    pose_target = geometry_msgs.msg.Pose()
-    pose_target.orientation.x = orientation[0] #0.0
-    pose_target.orientation.y = orientation[1] # 0.0
-    pose_target.orientation.z = orientation[2] # 0.0
-    pose_target.orientation.w = orientation[3] # 1.0
-    pose_target.position.x = position[0] + URF10_ORIGIN[0]
-    pose_target.position.y = position[1] + URF10_ORIGIN[1]
-    pose_target.position.z = position[2] + URF10_ORIGIN[2]
-    return pose_target
-
-def visualize_plan(plan):
-    display_trajectory = moveit_msgs.msg.DisplayTrajectory()
-    display_trajectory.trajectory_start = Robot.get_current_state()
-    display_trajectory.trajectory.append(plan)
-    Display_trajectory_publisher.publish(display_trajectory)
-
-def start_moveit():
-    global Robot, Scene, Manipulator, Display_trajectory_publisher
-
-    print("== Setting up MoveIt!")
-    moveit_commander.roscpp_initialize(sys.argv)
-    Robot = RobotCommander() 
-    print("== Getting Robot Groups")
-    print(Robot.get_group_names())
-    Scene = PlanningSceneInterface()
-    Manipulator = MoveGroupCommander("manipulator")
-    Manipulator.allow_replanning(True)
-    Display_trajectory_publisher = rospy.Publisher(
-                                    '/move_group/display_planned_path',
-                                    moveit_msgs.msg.DisplayTrajectory,
-                                    queue_size=10)
-    #print "== Printing robot state"
-    print Robot.get_current_state()
-
 # End of MoveIt routines
 
 # Miscellaneous commands
-
-def detect(params):
-    print("Detecting lettuces...")
-    # This is a dummy snapshot
-    take_snapshot()
-
-# def detect_image(params):
-#     print("Moving to camera position...")
-#     move_to(SCAN_POSITION, SCAN_ORIENTATION)  
-#     print("Generating fake image...")
-#     trigger_fake_image_snapshot()
-
-# def detect_camera(params):
-#     print("Moving to camera position...")
-#     position, orientation = reload_scan_position()
-#     #move_to(SCAN_POSITION, SCAN_ORIENTATION)  
-#     move_to(position, orientation)  
-#     print("Generating fake image...")
-#     trigger_camera_snapshot()
 
 def reload_scan_position():
     x = rospy.get_param(SCAN_POSITION_PARAM + '/x')
@@ -424,45 +493,6 @@ def take_snapshot():
     print("Taking snapshot...")
     Snapshot_publisher.publish('fake_lettuces')
 
-def blade_cut():
-    print("== ACTIVATING BLADE!!!")
-    blade_IO(UR10_BLADE_PIN8, 0)
-    blade_IO(UR10_BLADE_PIN9, 1)
-    return True
-
-def blade_release():    
-    print("== RETRACTING BLADE!!!")
-    blade_IO(UR10_BLADE_PIN8, 1)
-    blade_IO(UR10_BLADE_PIN9, 0)
-    return True
-
-def blade_IO(pin, voltage_level):
-    print("BladeIO Pin " + str(pin) + " to level " + str(voltage_level))
-    if DISABLE_IO:
-        return
-    # https://github.com/ThomasTimm/ur_modern_driver/issues/61 
-    io_msg = SetIO()
-    io_msg.fun = UR10_DIGITAL_IO_OUT
-    #io_msg.pin = UR10_BLADE_PIN
-    io_msg.pin = pin
-    io_msg.state = voltage_level    
-    service_proxy = rospy.ServiceProxy('/ur_driver/set_io', SetIO)
-    service_proxy(UR10_DIGITAL_IO_OUT, pin, voltage_level)
-
-UR10_DIGITAL_SET_VOLTAGE=4
-UR10_DIGITAL_IO_VOLTAGE=12
-
-def set_blade_voltage():
-    print("Setting voltage of digital IO")
-    if DISABLE_IO:
-        return
-    io_msg = SetIO()
-    io_msg.fun = UR10_DIGITAL_SET_VOLTAGE
-    #io_msg.pin = UR10_BLADE_PIN
-    #io_msg.pin = pin
-    io_msg.state = UR10_DIGITAL_IO_VOLTAGE    
-    service_proxy = rospy.ServiceProxy('/ur_driver/set_io', io_msg)
-    service_proxy(4, 8, 12)
 
 # Communications   
 
@@ -512,10 +542,6 @@ def callback(data):
         Vegebot_arm.action_scan_position()
         print("Generating fake image...")
         trigger_camera_snapshot()
-    # elif (command=='next_action'):
-    #     next_action(params) 
-    # elif (command=='action'):
-    #     action(params) 
     elif (command=='pregrasp'):
         Vegebot_arm.action_pregrasp() 
     elif (command=='down'):
@@ -543,101 +569,6 @@ def set_up_status_topic():
 
 ####################### MOVEIT STUFF STARTS HERE ################################################    
 
-def scale_trajectory_speed(traj, scale):
-       # Create a new trajectory object
-       new_traj = RobotTrajectory()
-       
-       # Initialize the new trajectory to be the same as the input trajectory
-       new_traj.joint_trajectory = traj.joint_trajectory
-       
-       # Get the number of joints involved
-       n_joints = len(traj.joint_trajectory.joint_names)
-       
-       # Get the number of points on the trajectory
-       n_points = len(traj.joint_trajectory.points)
-        
-       # Store the trajectory points
-       points = list(traj.joint_trajectory.points)
-       
-       # Cycle through all points and joints and scale the time from start,
-       # as well as joint speed and acceleration
-       for i in range(n_points):
-           point = JointTrajectoryPoint()
-           
-           # The joint positions are not scaled so pull them out first
-           point.positions = traj.joint_trajectory.points[i].positions
-
-           # Next, scale the time_from_start for this point
-           point.time_from_start = traj.joint_trajectory.points[i].time_from_start / scale
-           
-           # Get the joint velocities for this point
-           point.velocities = list(traj.joint_trajectory.points[i].velocities)
-           
-           # Get the joint accelerations for this point
-           point.accelerations = list(traj.joint_trajectory.points[i].accelerations)
-           
-           # Scale the velocity and acceleration for each joint at this point
-           for j in range(n_joints):
-               point.velocities[j] = point.velocities[j] * scale
-               point.accelerations[j] = point.accelerations[j] * scale * scale
-        
-           # Store the scaled trajectory point
-           points[i] = point
-
-       # Assign the modified points to the new trajectory
-       new_traj.joint_trajectory.points = points
-
-       # Return the new trajecotry
-       return new_traj
-   
-def set_trajectory_speed(traj, speed):
-       # Create a new trajectory object
-       new_traj = RobotTrajectory()
-       
-       # Initialize the new trajectory to be the same as the input trajectory
-       new_traj.joint_trajectory = traj.joint_trajectory
-       
-       # Get the number of joints involved
-       n_joints = len(traj.joint_trajectory.joint_names)
-       
-       # Get the number of points on the trajectory
-       n_points = len(traj.joint_trajectory.points)
-        
-       # Store the trajectory points
-       points = list(traj.joint_trajectory.points)
-       
-       # Cycle through all points and joints and scale the time from start,
-       # as well as joint speed and acceleration
-       for i in range(n_points):
-           point = JointTrajectoryPoint()
-           
-           # The joint positions are not scaled so pull them out first
-           point.positions = traj.joint_trajectory.points[i].positions
-
-           # Next, scale the time_from_start for this point
-           point.time_from_start = traj.joint_trajectory.points[i].time_from_start
-           
-           # Initialize the joint velocities for this point
-           point.velocities = [speed] * n_joints
-           
-           # Get the joint accelerations for this point
-           point.accelerations = [speed / 4.0] * n_joints
-        
-           # Store the scaled trajectory point
-           points[i] = point
-
-       # Assign the modified points to the new trajectory
-       new_traj.joint_trajectory.points = points
-
-       # Return the new trajecotry
-       return new_traj
-
-# def list_parameters():
-#     parameter_names = rospy.get_param_names()
-#     filtered_parameter_names = [x for x in parameter_names if x[:9] == '/vegebot/']
-#     print filtered_parameter_names
-    
-
 
 # Main Loop of module
 
@@ -647,131 +578,8 @@ if __name__ == '__main__':
     get_config()
     set_defaults()
     set_up_status_topic()
-    set_blade_voltage()
-    blade_cut()
-    blade_release()
+    #set_blade_voltage()
     Vegebot_arm = ArmController()
-    start_moveit()
 
     listener()
-
-    # def pick(self, params):
-    #     print("Picking...")
-    #     print params
-    #     if (len(params)==4):
-    #         x = float(params[1])
-    #         y = float(params[2])
-    #         z = float(params[3])
-    #         position = [x, y, z]
-    #         position = offset_end_effector_from_lettuce(position)
-    #         #move_to(position, PICK_ORIENTATION)  
-    #         lettuce_picked = do_pick(position)
-    #         if (lettuce_picked):
-    #             do_place()
-    #     else:
-    #         print("*** WARNING: Need 1+3 parameters ***")
-    #         print("Received " + len(params))
-    #     print("== Picked.")
-
-
-# def pick_test(params):
-#     print("Picking test...")
-#     move_to(PICK_POSITION, PICK_ORIENTATION)  
-#     print("== Picked.")
-
-    # def action_scan_position1(self):
-    #     print("Moving to camera position...")
-    #     move_to(SCAN_POSITION, SCAN_ORIENTATION)  
-            
-        # lettuce_picked = do_pick(target_position)
-        # if (lettuce_picked):
-        #     if (do_place()):
-        #         return (True, "Pick and place worked!", "pick")
-        #     else:
-        # return (False, "Pick actions failed", "pick")    
-
-# def action(params):
-#     global Next_action, Last_action
-#     Next_action = Last_action
-#     next_action(params)
-
-# def next_action(params):
-#     global Next_action, Last_action, Current_reference_position
-
-#     print("==== Next action triggered ====")   
-#     position = get_position_from_params(params)
-#     pregrasp_position = add_vectors(position, PREGRASP_OFFSET)
-#     pregrasp_position = add_vectors(pregrasp_position, TARGET_END_EFFECTOR_OFFSET)
-#     target_position = add_vectors(position, TARGET_END_EFFECTOR_OFFSET)
-#     if (position != None):
-#         if (Next_action==None) or (Current_reference_position != position):
-#             Next_action = 'pregrasp'
-#         Last_action = Next_action        
-#         if Next_action=='pregrasp':
-#             success, status_message, Next_action = action_pregrasp(pregrasp_position)
-#         elif Next_action=="down":
-#             success, status_message, Next_action = action_down(target_position)  
-#         elif Next_action=="cut":
-#             success, status_message, Next_action = action_cut()  
-#         elif Next_action=="up":
-#             success, status_message, Next_action = action_up(pregrasp_position)  
-#         elif Next_action=="place":
-#             success, status_message, Next_action = action_place()  
-#         elif Next_action=="release":
-#             success, status_message, Next_action = action_release()  
-#         publish_status_message(status_message)    
-#         Current_reference_position = position         
-#     else:
-#         rospy.loginfo("***** Bad position sent from UI *****")
-#         pospy.loginfo("Cancelling next action.")
-
-# def do_place():
-#     print("== Moving end effector to place position...")
-#     move_to(PLACE_POSITION, PLACE_ORIENTATION)
-#     print("== Release lettuce...")
-#     blade_release()
-
-
-# def get_target_position_from_params(params):
-#     return get_position_from_params(params)
-
-# def get_positions_from_params(params):
-#     position = get_position_from_params(params)
-#     return get_positions_from_position(position)
-
-# def get_positions_from_position(position):
-#     pregrasp_position = add_vectors(position, PREGRASP_OFFSET)
-#     pregrasp_position = add_vectors(pregrasp_position, TARGET_END_EFFECTOR_OFFSET)
-#     target_position = add_vectors(position, TARGET_END_EFFECTOR_OFFSET)
-#     return (pregrasp_position, target_position)
-
-# def park(params):
-#     print("== Parking...") 
-#     move_to(PARK_POSITION, PARK_ORIENTATION)  
-#     #blade_cut()
-#     #timer.sleep(5)
-#     blade_release()
-#     print("== Parked.")
-
-# def do_pick(position):
-#     pregrasp_position = add_vectors(position, PREGRASP_OFFSET)
-#     pregrasp_position = add_vectors(pregrasp_position, TARGET_END_EFFECTOR_OFFSET)
-#     target_position = add_vectors(position, TARGET_END_EFFECTOR_OFFSET)
-
-#     if (reach_to_pregrasp_position(pregrasp_position)):
-#         if (descend_on_lettuce(target_position)):
-#             blade_cut()
-#             rospy.sleep(2)
-#             ascend_from_lettuce(pregrasp_position)
-#             #return True
-
-#     #rospy.loginfo("**** Problem with picking...")
-#     # reach_to_pregrasp_position(pregrasp_position)
-#     # descend_on_lettuce(position)        
-#     # blade_cut()
-#     # rospy.sleep(2.0)
-#     # ascend_from_lettuce(pregrasp_position)
-
-#     print("== Detect if lettuce is in the bucket ==")
-#     return True
 
