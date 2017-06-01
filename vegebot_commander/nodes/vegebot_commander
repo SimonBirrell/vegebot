@@ -14,6 +14,7 @@ import geometry_msgs.msg
 from ur_msgs.srv import SetIO
 
 from moveit_msgs.msg import RobotTrajectory
+from moveit_msgs.msg import Constraints, OrientationConstraint
 from trajectory_msgs.msg import JointTrajectoryPoint
 from geometry_msgs.msg import PoseStamped, Pose
 
@@ -28,25 +29,22 @@ CARTESIAN_APPROACH = True
 
 PICK_POSITION = [ 1.0, 0.0, 0.5]
 PICK_ORIENTATION= [ 0.5, -0.5, -0.5, -0.5]
-#PICK_ORIENTATION = [ 0.0, 0.707106781, 0.0, 0.707106781]
 
 PARK_POSITION = [ 0.38309, -0.39763, 0.93282]
 PARK_ORIENTATION = [ 0.0, 0.707106781, 0.0, 0.707106781]
 
-#PLACE_POSITION = [ -0.3, 0.8, 1.2]
 PLACE_POSITION = [ -0.2, -0.7, 0.93282]
 PLACE_ORIENTATION = [ 0.0, 0.707106781, 0.0, 0.707106781]
 
 SCAN_POSITION = [ 0.9, 0.0, 0.8]
-#SCAN_ORIENTATION= [ 0.0, 0.707106781, 0.0, 0.707106781]
-#SCAN_ORIENTATION= [ 0.499999999736182, -0.499999999736182, -0.499999999736182, -0.499999999736182 ]
 SCAN_ORIENTATION= [ 0.5, -0.5, -0.5, -0.5]
 SCAN_POSITION_PARAM = '/vegebot/scan_position'
 
 END_EFFECTOR_TO_LETTUCE_Z = 0.14
-#END_EFFECTOR_TO_LETTUCE_Z = 0.18
 PREGRASP_OFFSET = [0.0, 0.0, 0.3]
 TARGET_END_EFFECTOR_OFFSET = [0.0, 0.0, END_EFFECTOR_TO_LETTUCE_Z]
+
+BASE_ORIGIN_TO_URSCRIPT_ORIGIN = [0.0, 0.0, -0.58]
 
 URF10_ORIGIN = [0.0, 0.0, 0.0]
 
@@ -79,8 +77,9 @@ class ArmController():
 
     def __init__(self):
         self.blade_strategy = BladeControllerUr10()
-        self.kinematics_controller = ArmKinematicsControllerMoveIt()
-        self.movement_strategy = MovementStrategyDirect(self.kinematics_controller)
+        #self.kinematics_controller = ArmKinematicsControllerMoveIt()
+        self.kinematics_controller = ArmKinematicsControllerMoveItAndURScript()
+        self.movement_strategy = MovementStrategyWithMixedControl(self.kinematics_controller)
 
     def set_target_position(self, position):
         position = self.offset_end_effector_from_lettuce(position)
@@ -185,7 +184,6 @@ class MovementStrategy():
     def __init__(self, kinematics_controller):
         self.kinematics_controller = kinematics_controller
 
-class MovementStrategyDirect(MovementStrategy):
     def move_park(self):
         return self.kinematics_controller.move_to(PARK_POSITION, PARK_ORIENTATION)  
 
@@ -194,7 +192,7 @@ class MovementStrategyDirect(MovementStrategy):
         return self.kinematics_controller.move_to(pregrasp_position, PICK_ORIENTATION)
 
     def move_down(self, position):
-        global CARTESIAN_APPROACH
+        global CARTESIAN_APPROACH, PICK_ORIENTATION
         print("== Approach lettuce...")
         if (CARTESIAN_APPROACH):
             return self.kinematics_controller.cartesian_move_to(position, PICK_ORIENTATION)
@@ -202,7 +200,7 @@ class MovementStrategyDirect(MovementStrategy):
             return self.kinematics_controller.move_to(position, PICK_ORIENTATION)
 
     def move_up(self, pregrasp_position):
-        global CARTESIAN_APPROACH
+        global CARTESIAN_APPROACH, PICK_ORIENTATION
         print("== Retreat from lettuce...")
         if (CARTESIAN_APPROACH):
             return self.kinematics_controller.cartesian_move_to(pregrasp_position, PICK_ORIENTATION)
@@ -214,6 +212,35 @@ class MovementStrategyDirect(MovementStrategy):
 
     def move_scan(self, position, orientation):
         self.kinematics_controller.move_to(position, orientation)          
+
+class MovementStrategyDirect(MovementStrategy):
+    pass
+
+class MovementStrategyWithMixedControl(MovementStrategy):
+
+    def move_up(self, pregrasp_position):
+        return self.kinematics_controller.arm_controller_move_to(pregrasp_position, PICK_ORIENTATION)    
+
+    def move_down(self, pregrasp_position):
+        return self.kinematics_controller.arm_controller_move_to(pregrasp_position, PICK_ORIENTATION)    
+
+class MovementStrategyWithWaypoints(MovementStrategy):
+
+    def move_up(self, pregrasp_position):
+        global CARTESIAN_APPROACH, PICK_ORIENTATION
+        print("== MovementStrategyWithWaypoints: Retreat from lettuce...")
+        if (CARTESIAN_APPROACH):
+            return self.kinematics_controller.cartesian_move_to_with_orientation_constraint(pregrasp_position, PICK_ORIENTATION)
+        else:
+            return self.kinematics_controller.move_to(pregrasp_position, PICK_ORIENTATION)
+
+    def move_down(self, position):
+        global CARTESIAN_APPROACH, PICK_ORIENTATION
+        print("== Approach lettuce...")
+        if (CARTESIAN_APPROACH):
+            return self.kinematics_controller.cartesian_move_to_with_orientation_constraint(position, PICK_ORIENTATION)
+        else:
+            return self.kinematics_controller.move_to(position, PICK_ORIENTATION)
 
 #######################################################################################        
 
@@ -319,6 +346,73 @@ class ArmKinematicsControllerMoveIt():
             rospy.loginfo("Failed to find Cartesian trajectory after " + str(attempts) + " attempts...")
             return False
 
+    def cartesian_move_to_with_orientation_constraint(self, position, orientation):
+        global Manipulator
+
+        rospy.loginfo("*** Adding vertical constraint ***")
+
+        if DISABLE_MOVEMENT:
+            rospy.sleep(3)
+            return True
+
+        end_effector_link = Manipulator.get_end_effector_link()
+        current_pose = Manipulator.get_current_pose(end_effector_link)
+        start_pose = current_pose.pose
+        end_pose = deepcopy(self.new_pose(position, orientation))
+        waypoints=[]
+        # Don-t add start point! 
+        # http://answers.ros.org/question/253004/moveit-problem-error-trajectory-message-contains-waypoints-that-are-not-strictly-increasing-in-time/
+        #waypoints.append(deepcopy(start_pose))
+        waypoints.append(end_pose)
+
+        # Create a contraints list and give it a name
+        constraints = Constraints() 
+        constraints.name = "Keep bucket vertical"
+        # Create an orientation constraint for the right gripper
+        orientation_constraint = OrientationConstraint()
+        orientation_constraint.header = current_pose.header
+        orientation_constraint.link_name = end_effector_link
+        orientation_constraint.orientation.x = start_pose.orientation.x
+        orientation_constraint.orientation.y = start_pose.orientation.y
+        orientation_constraint.orientation.z = start_pose.orientation.z
+        orientation_constraint.orientation.w = start_pose.orientation.w
+        orientation_constraint.absolute_x_axis_tolerance = 0.1
+        orientation_constraint.absolute_y_axis_tolerance = 0.1
+        orientation_constraint.absolute_z_axis_tolerance = 3.14
+        orientation_constraint.weight = 1.0        
+        # Append the constraint to the list of contraints
+        constraints.orientation_constraints.append(orientation_constraint)
+        # Set the path constraints on the right_arm
+        Manipulator.set_path_constraints(constraints)
+
+        fraction = 0.0
+        max_tries = 100
+        attempts = 0
+        eef_step = 0.01
+        jump_threshold = 0.0
+        avoid_collisions = True
+        while fraction < 1.0 and attempts < max_tries:
+            (plan, fraction) = Manipulator.compute_cartesian_path(
+                                            waypoints,
+                                            eef_step,
+                                            jump_threshold,
+                                            avoid_collisions)
+            attempts += 1
+            if attempts % 100 == 0:
+                rospy.loginfo("Still attempting cartesian after " + str(attempts) + " attempts...")
+        if fraction==1.0:
+            rospy.loginfo("******** Successfully found Carteian trajectory.")
+            rospy.loginfo(start_pose.position)
+            rospy.loginfo(end_pose.position)
+            scaled_plan = self.scale_trajectory_speed(plan, VELOCITY_SCALE)
+            Manipulator.execute(scaled_plan)
+            workaround = Robot.get_current_state()
+            rospy.loginfo("******** Successfully executed Carteian trajectory.")
+            return True
+        else:
+            rospy.loginfo("Failed to find Cartesian trajectory after " + str(attempts) + " attempts...")
+            return False
+
     def plan_has_succeeded(self, trajectory):
         if (trajectory==None):
             return False
@@ -384,6 +478,38 @@ class ArmKinematicsControllerMoveIt():
            # Return the new trajecotry
            return new_traj
        
+
+class ArmKinematicsControllerMoveItAndURScript(ArmKinematicsControllerMoveIt):
+
+    def __init__(self):
+        self.start_moveit()  
+        self.urscript_publisher = rospy.Publisher('/ur_driver/URScript', String, queue_size=10)
+    
+    def arm_controller_move_to(self, position, orientation):
+        rospy.loginfo("**** Moving using ARM controller")   
+        pose_string = self.convertRosPoseToURScriptPose(position, orientation)
+        acceleration = 0.01
+        velocity = 0.05
+        time = 0
+        blend_radius = 0
+        self.urscript_publisher.publish("movel(%s, a=%s, v=%s, t=%s, r=%s)" % (pose_string, acceleration, velocity, time, blend_radius))
+        # These two lines appear to reset MoveIt so we can mix the two different types
+        # of control.
+        end_effector_link = Manipulator.get_end_effector_link()
+        current_pose = Manipulator.get_current_pose(end_effector_link)
+
+        return True    
+
+    def convertRosPoseToURScriptPose(self, position, orientation):
+        pose_string = "p["
+        pose_string = pose_string + str(-position[0] + BASE_ORIGIN_TO_URSCRIPT_ORIGIN[0]) + ", "
+        pose_string = pose_string + str(position[1] + BASE_ORIGIN_TO_URSCRIPT_ORIGIN[1]) + ", "
+        pose_string = pose_string + str(position[2] + BASE_ORIGIN_TO_URSCRIPT_ORIGIN[2]) + ", "
+
+        pose_string = pose_string + "0.0, 3.142, 0.0]"
+        #return "p[-0.5, 0.0, 0.0, 0.0, 3.142, 0.0]"    
+        rospy.loginfo(pose_string)
+        return pose_string   
 
 #######################################################################################        
 
@@ -570,7 +696,6 @@ def set_up_status_topic():
 # Main Loop of module
 
 if __name__ == '__main__':
-    global Vegebot_arm
     print("Vegebot_Commander is listening for commands.")
     get_config()
     set_defaults()
