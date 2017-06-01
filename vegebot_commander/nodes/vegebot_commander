@@ -227,6 +227,19 @@ class MovementStrategyWithMixedControl(MovementStrategy):
     def move_down(self, pregrasp_position):
         return self.kinematics_controller.arm_controller_move_to(pregrasp_position, PICK_ORIENTATION)    
 
+    def move_place(self):
+        return self.kinematics_controller.arm_controller_move_to(PLACE_POSITION, PLACE_ORIENTATION)        
+
+    def move_scan(self, position, orientation):
+        return self.kinematics_controller.arm_controller_move_to(position, orientation)          
+
+    def move_park(self):
+        return self.kinematics_controller.arm_controller_move_to(PARK_POSITION, PARK_ORIENTATION)  
+
+    def move_pregrasp(self, pregrasp_position):
+        return self.kinematics_controller.arm_controller_move_to(pregrasp_position, PICK_ORIENTATION)
+
+
 class MovementStrategyWithWaypoints(MovementStrategy):
 
     def move_up(self, pregrasp_position):
@@ -497,15 +510,15 @@ class ArmKinematicsControllerMoveItAndURScript(ArmKinematicsControllerMoveIt):
 
     def generate_urscript_move_command(self, position, orientation):
         pose_string = self.convertRosPoseToURScriptPose(position, orientation)
-        acceleration = 0.02
-        velocity = 0.08
+        acceleration = 0.04
+        velocity = 0.2
         time = 0
         blend_radius = 0
         return "movel(%s, a=%s, v=%s, t=%s, r=%s)" % (pose_string, acceleration, velocity, time, blend_radius)           
 
     def wait_for_move_to_complete(self, position, orientation):
         end_effector_link = Manipulator.get_end_effector_link()
-        time_out = 10.0
+        time_out = 30.0
         start_time = time.time()
         timeout_time = start_time + time_out
         while True:
