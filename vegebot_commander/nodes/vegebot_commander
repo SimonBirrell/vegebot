@@ -3,6 +3,7 @@
 import rospy
 from std_msgs.msg import String, Bool
 
+import math
 import sys
 import time
 import copy
@@ -55,6 +56,8 @@ UR10_BLADE_PIN8 = 16
 UR10_BLADE_PIN9 = 17
 UR10_DIGITAL_SET_VOLTAGE=4
 UR10_DIGITAL_IO_VOLTAGE=12
+
+URSCRIPT_DISTANCE_TO_GOAL = 0.02
 
 VELOCITY_SCALE = 0.75
 
@@ -486,30 +489,62 @@ class ArmKinematicsControllerMoveItAndURScript(ArmKinematicsControllerMoveIt):
         self.urscript_publisher = rospy.Publisher('/ur_driver/URScript', String, queue_size=10)
     
     def arm_controller_move_to(self, position, orientation):
-        rospy.loginfo("**** Moving using ARM controller")   
+        rospy.loginfo("**** Moving using ARM controller") 
+
+        urscript_command = self.generate_urscript_move_command(position, orientation)  
+        self.urscript_publisher.publish(urscript_command)
+        return self.wait_for_move_to_complete(position, orientation)
+
+    def generate_urscript_move_command(self, position, orientation):
         pose_string = self.convertRosPoseToURScriptPose(position, orientation)
-        acceleration = 0.01
-        velocity = 0.05
+        acceleration = 0.02
+        velocity = 0.08
         time = 0
         blend_radius = 0
-        self.urscript_publisher.publish("movel(%s, a=%s, v=%s, t=%s, r=%s)" % (pose_string, acceleration, velocity, time, blend_radius))
-        # These two lines appear to reset MoveIt so we can mix the two different types
-        # of control.
-        end_effector_link = Manipulator.get_end_effector_link()
-        current_pose = Manipulator.get_current_pose(end_effector_link)
+        return "movel(%s, a=%s, v=%s, t=%s, r=%s)" % (pose_string, acceleration, velocity, time, blend_radius)           
 
-        return True    
+    def wait_for_move_to_complete(self, position, orientation):
+        end_effector_link = Manipulator.get_end_effector_link()
+        time_out = 10.0
+        start_time = time.time()
+        timeout_time = start_time + time_out
+        while True:
+            current_pose = Manipulator.get_current_pose(end_effector_link)
+            # TODO: This won't behave as expected if the movement consists only of a rotation
+            ros_position = current_pose.pose.position
+            current_position = [ros_position.x, ros_position.y, ros_position.z]
+            distance_to_goal = euclidean_distance(position, current_position)
+            if (distance_to_goal < URSCRIPT_DISTANCE_TO_GOAL):
+                rospy.loginfo("Movement completed")
+                return True
+            if (time.time()> timeout_time):
+                rospy.loginfo("Movement TIME OUT")
+                return False   
 
     def convertRosPoseToURScriptPose(self, position, orientation):
         pose_string = "p["
         pose_string = pose_string + str(-position[0] + BASE_ORIGIN_TO_URSCRIPT_ORIGIN[0]) + ", "
-        pose_string = pose_string + str(position[1] + BASE_ORIGIN_TO_URSCRIPT_ORIGIN[1]) + ", "
+        pose_string = pose_string + str(-position[1] + BASE_ORIGIN_TO_URSCRIPT_ORIGIN[1]) + ", "
         pose_string = pose_string + str(position[2] + BASE_ORIGIN_TO_URSCRIPT_ORIGIN[2]) + ", "
 
-        pose_string = pose_string + "0.0, 3.142, 0.0]"
-        #return "p[-0.5, 0.0, 0.0, 0.0, 3.142, 0.0]"    
+        axis_angle = quaternion_to_axis_angle(orientation)
+
+        pose_string = pose_string + str(axis_angle[0]) + ", "
+        pose_string = pose_string + str(axis_angle[1]) + ", "
+        pose_string = pose_string + str(axis_angle[2]) + "]"
+
+        #pose_string = pose_string + "0.0, 3.142, 0.0]"
+
         rospy.loginfo(pose_string)
         return pose_string   
+
+def euclidean_distance(point1, point2):
+    return math.sqrt((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2 + (point1[2] - point2[2])**2)         
+
+def quaternion_to_axis_angle(orientation):
+    # TODO: Last solution on https://math.stackexchange.com/questions/291110/numerically-stable-extraction-of-axis-angle-from-unit-quaternion
+    return [0.0, 3.142, 0.0]
+
 
 #######################################################################################        
 
