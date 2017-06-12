@@ -80,9 +80,12 @@ Vegebot_arm = None
 class ArmController():
 
     def __init__(self):
+        global IS_A_SIMULATION
         self.blade_strategy = BladeControllerUr10()
-        #self.kinematics_controller = ArmKinematicsControllerMoveIt()
-        self.kinematics_controller = ArmKinematicsControllerMoveItAndURScript()
+        if (IS_A_SIMULATION):
+            self.kinematics_controller = ArmKinematicsControllerMoveIt()
+        else:
+            self.kinematics_controller = ArmKinematicsControllerMoveItAndURScript()
         self.movement_strategy = MovementStrategyWithMixedControl(self.kinematics_controller)
 
     def set_target_position(self, position):
@@ -278,6 +281,9 @@ class ArmKinematicsControllerMoveIt():
         Manipulator = MoveGroupCommander("manipulator")
         Manipulator.allow_replanning(True)
         print Robot.get_current_state()
+
+    def arm_controller_move_to(self, position, orientation):
+        return self.move_to(position, orientation)
 
     def move_to(self, position, orientation):
         global Manipulator
