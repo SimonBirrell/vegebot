@@ -41,8 +41,9 @@ SCAN_POSITION = [ 0.9, 0.0, 0.8]
 SCAN_ORIENTATION= [ 0.5, -0.5, -0.5, -0.5]
 SCAN_POSITION_PARAM = '/vegebot/scan_position'
 
-END_EFFECTOR_TO_LETTUCE_Z = 0.14
-PREGRASP_OFFSET = [0.0, 0.0, 0.3]
+#END_EFFECTOR_TO_LETTUCE_Z = 0.14
+END_EFFECTOR_TO_LETTUCE_Z = 0.11
+PREGRASP_OFFSET = [0.0, 0.0, 0.7]
 TARGET_END_EFFECTOR_OFFSET = [0.0, 0.0, END_EFFECTOR_TO_LETTUCE_Z]
 
 BASE_ORIGIN_TO_URSCRIPT_ORIGIN = [0.0, 0.0, -0.58]
@@ -510,8 +511,8 @@ class ArmKinematicsControllerMoveItAndURScript(ArmKinematicsControllerMoveIt):
 
     def generate_urscript_move_command(self, position, orientation):
         pose_string = self.convertRosPoseToURScriptPose(position, orientation)
-        acceleration = 0.04
-        velocity = 0.2
+        acceleration = 0.1
+        velocity = 0.4
         time = 0
         blend_radius = 0
         return "movel(%s, a=%s, v=%s, t=%s, r=%s)" % (pose_string, acceleration, velocity, time, blend_radius)           
