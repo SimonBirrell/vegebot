@@ -74,7 +74,7 @@ def set_up_lettuce_hypotheses_topic():
 def set_up_take_snapshot_topic():
     rospy.Subscriber("/vegebot/lettuce_test/take_snapshot", String, take_snapshot)
 
-def set_up_camwera_topic():
+def set_up_camera_topic():
     rospy.Subscriber(CAMERA_TOPIC_NAME, Image, receive_camera_image)
 
 def take_snapshot(message):
@@ -96,9 +96,12 @@ def publish_fake_image():
 	publish_jpeg_from_file(LETTUCE_IMAGE_TOPIC_NAME, filename)	
 
 def publish_camera_image():
-	print("Publishing camera image !!!!")
-	image_message = convert_image_rgb(Last_camera_image)
-	publish_image_from_array(LETTUCE_IMAGE_TOPIC_NAME, image_message)	
+	rospy.loginfo("Publishing camera image !!!!")
+	if (Last_camera_image==None):
+		rospy.loginfo("ERROR: No camera image received yet on " + CAMERA_TOPIC_NAME)
+	else:
+		image_message = convert_image_rgb(Last_camera_image)
+		publish_image_from_array(LETTUCE_IMAGE_TOPIC_NAME, image_message)	
 
 def convert_image_rgb(image):
 	global OpenCVBridge
@@ -172,7 +175,7 @@ if __name__ == '__main__':
     set_up_opencv()
     lettuce_hypotheses_topic = set_up_lettuce_hypotheses_topic()
     lettuce_images_raw_topic = set_up_lettuce_images_raw_topic()
-    camera_topic = set_up_camwera_topic()
+    camera_topic = set_up_camera_topic()
     set_up_take_snapshot_topic()
     rospy.init_node('lettucetest', anonymous=True)
 

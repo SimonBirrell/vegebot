@@ -8,7 +8,8 @@
 	</node>
 -->
 
-	<node pkg="lettuce_test" name="test" type="test">
+
+	<node pkg="lettuce_test" name="test" type="test" output="screen">
 	</node>
 
 	<node pkg="lettuce_detect" name="lettuce_detector" type="lettuce_detector">
@@ -37,10 +38,10 @@
 		<arg name="limited" value="false" />
 	</include>
 	<!-- USB Camera -->
-<!--
+
+
 	<include file="$(find usb_cam)/launch/usb_cam-test.launch">
 	</include>
--->
 
 <!--
 	<node pkg="image_view" name="raw_lettuce" type="image_view" args="image:=/vegebot/lettuce_video/raw_images" />

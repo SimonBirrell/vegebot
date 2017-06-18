@@ -664,7 +664,7 @@ def trigger_fake_image_snapshot():
     Snapshot_publisher.publish('fake_image')
 
 def trigger_camera_snapshot():
-    print("Triggering fake image snapshot...")
+    print("Triggering camera snapshot...")
     Snapshot_publisher.publish('camera_image')
 
 def take_snapshot():
@@ -718,7 +718,7 @@ def callback(data):
         trigger_fake_image_snapshot()
     elif (command=='detect_camera'):
         Vegebot_arm.action_scan_position()
-        print("Generating fake image...")
+        print("Generating real camera image...")
         trigger_camera_snapshot()
     elif (command=='pregrasp'):
         Vegebot_arm.action_pregrasp() 
