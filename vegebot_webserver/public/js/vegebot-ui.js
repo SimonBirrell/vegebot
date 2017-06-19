@@ -17,7 +17,7 @@ function update2DUIWithLettuceHypothesis(lettuceHypothesis) {
 	var menuItemsEnter = menuItems	
 		.enter()
 		.append('div')
-		.attr('class', 'pure-u-1 pure-u-md-1-2 lettuce-menu-item');
+		.attr('class', 'pure-u-1 pure-u-md-1-1 lettuce-menu-item');
 
 	menuItemsEnter.append('span')
 		.text(function(d) {

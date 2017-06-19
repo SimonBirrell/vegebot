@@ -44,10 +44,8 @@
 
 		var viewer = new ROS3D.Viewer({
 			divID: 'urdf',
-			width: 400,
-			height: 250,
-			//width: 800,
-			//height: 500,
+			width: 640, // 400
+			height: 480, // 250
 			antialias: true
 		});
 		Viewer = viewer;

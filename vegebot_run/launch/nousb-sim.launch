@@ -24,6 +24,8 @@
 	</node>
 	<include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch">
 	</include>
+	<node pkg="web_video_server" name="web_video_server" type="web_video_server">
+	</node>  
 
 	<!-- UR10 Robot Arm -->
 	<include file="$(find vegebot_run)/launch/vegebot_ur10.launch">

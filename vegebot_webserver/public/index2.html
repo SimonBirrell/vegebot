@@ -21,13 +21,107 @@
   <script type="text/javascript" src="js/vegebot-ros.js"></script>
 
 	<!--[if lte IE 8]>
-        <link rel="stylesheet" href="https://unpkg.com/purecss@0.6.2/build/grids-responsive-old-ie-min.css">
-    <![endif]-->
-    <!--[if gt IE 8]><!-->
-      <link rel="stylesheet" href="css/grids-responsive-min.css">
-    <!--<![endif]-->
-      <link rel="stylesheet" href="css/vegebot.css">
-              
+          <link rel="stylesheet" href="https://unpkg.com/purecss@0.6.2/build/grids-responsive-old-ie-min.css">
+      <![endif]-->
+      <!--[if gt IE 8]><!-->
+          <link rel="stylesheet" href="css/grids-responsive-min.css">
+      <!--<![endif]-->
+      
+      <style>
+      .custom-wrapper {
+          background-color: #bee9d4;
+          margin-bottom: 1em;
+          -webkit-font-smoothing: antialiased;
+          height: 2.1em;
+          overflow: hidden;
+          -webkit-transition: height 0.5s;
+          -moz-transition: height 0.5s;
+          -ms-transition: height 0.5s;
+          transition: height 0.5s;
+      }
+      
+      .custom-wrapper.open {
+          height: 14em;
+      }
+      
+      .custom-menu-3 {
+          text-align: right;
+      }
+      
+      .custom-toggle {
+          width: 34px;
+          height: 34px;
+          display: block;
+          position: absolute;
+          top: 0;
+          right: 0;
+          display: none;
+      }
+      
+      .custom-toggle .bar {
+          background-color: #777;
+          display: block;
+          width: 20px;
+          height: 2px;
+          border-radius: 100px;
+          position: absolute;
+          top: 18px;
+          right: 7px;
+          -webkit-transition: all 0.5s;
+          -moz-transition: all 0.5s;
+          -ms-transition: all 0.5s;
+          transition: all 0.5s;
+      }
+      
+      .custom-toggle .bar:first-child {
+          -webkit-transform: translateY(-6px);
+          -moz-transform: translateY(-6px);
+          -ms-transform: translateY(-6px);
+          transform: translateY(-6px);
+      }
+      
+      .custom-toggle.x .bar {
+          -webkit-transform: rotate(45deg);
+          -moz-transform: rotate(45deg);
+          -ms-transform: rotate(45deg);
+          transform: rotate(45deg);
+      }
+      
+      .custom-toggle.x .bar:first-child {
+          -webkit-transform: rotate(-45deg);
+          -moz-transform: rotate(-45deg);
+          -ms-transform: rotate(-45deg);
+          transform: rotate(-45deg);
+      }
+
+      .status {
+        margin: 4px;
+        padding: 4px;
+        background-color: rgb(240,240,240);
+        color: rgb(20,200,20);
+      }
+      
+      @media (max-width: 47.999em) {
+      
+          .custom-menu-3 {
+              text-align: left;
+          }
+      
+          .custom-toggle {
+              display: block;
+          }
+      
+      }
+      </style>
+      <style>
+        .lettuce-menu-item {
+          padding-top: 4px;
+        }
+        .lettuce-pick-button {
+          float: right;
+          margin-right: 8px;
+        }
+      </style>
       <div class="custom-wrapper pure-g" id="menu">
           <div class="pure-u-1 pure-u-md-1-3">
               <div class="pure-menu">
@@ -52,7 +146,6 @@
               </div>
           </div>
       </div>
-
       <script>
       (function (window, document) {
       var menu = document.getElementById('menu'),
@@ -153,10 +246,7 @@
 </head>
 <body onload="init()">
 	<div class='pure-g'>
-
-    <div id="video" class="pure-u-1-2"><img src="http://localhost:8080/stream?topic=/usb_cam/image_raw"></img></div>
-		<div id='urdf' class='pure-u-1-2'></div>
-
+		<div id='urdf' class='pure-u-1-1'></div>
 		<div class="pure-u-1-1">
 			<button onclick="sendVegebotCommand('park');" class="pure-button">Park</button>
       <button onclick="sendVegebotCommand('detect');" class="pure-button">Detect</button>
