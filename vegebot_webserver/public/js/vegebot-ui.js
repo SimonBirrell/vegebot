@@ -2,6 +2,10 @@
 
 window.Vegebot = window.Vegebot || {};
 
+var LettucePlacingMode = false;
+var CameraViewPortWidth = 640,
+	CameraViewPortHeight = 480;
+
 function initVegebotUI() {
 	console.log('Initializing 2D UI...');
 
@@ -10,9 +14,112 @@ function initVegebotUI() {
 function update2DUIWithLettuceHypothesis(lettuceHypothesis) {
 	//console.log('Updating 2D UI display with Lettuce Hypothesis.');
 	console.log(window.LettuceList.length);
+
+	setUpMouseHandlers();
+	drawLettuceOverlays();
+	drawMenu(lettuceHypothesis);
+}
+window.Vegebot.update2DUIWithLettuceHypothesis = update2DUIWithLettuceHypothesis;
+
+function setUpMouseHandlers() {
+
+		var svg = d3.select('#video-overlay');
+
+		svg.on('click', function() {
+			if (LettucePlacingMode) {
+				//alert("LettucePlacingMode active!");
+				var coords = d3.mouse(this);
+				var newLettuce = addUserLettuceAtXY(coords[0], coords[1], 40);
+			} else {
+				//alert("LettucePlacingMode not active. iognoring click");
+			}
+			LettucePlacingMode = false;
+		});
+}
+
+// Adds a User/generated Lettuce Hypothesis
+//
+function addUserLettuceAtXY(x, y, r) {
+	window.Vegebot.UserGeneratedLettuceHypothesisId = window.Vegebot.UserGeneratedLettuceHypothesisId || 9999;
+	window.Vegebot.UserGeneratedLettuceHypothesisId++;
+
+	var lettuce_hypothesis_id = window.Vegebot.UserGeneratedLettuceHypothesisId.toString(),
+		lettuceHypothesis = {
+			lettuce_hypothesis_id: lettuce_hypothesis_id,
+			label: "user_lettuce_" + lettuce_hypothesis_id,
+			camera_bb_x: x / CameraViewPortWidth,
+			camera_bb_y: y / CameraViewPortHeight,
+			camera_bb_width: (r * 2.0) / CameraViewPortWidth,
+			camera_bb_height: (r * 2.0) / CameraViewPortHeight,
+			probability: 0.95,
+			pose: {
+				orientation: {
+					w: 0.0,
+					x: 0.0,
+					y: 0.0,
+					z: 0.0
+				},
+				position: {
+					x: 0.0,
+					y: 0.0,
+					z: 0.0
+				}
+			}
+		};
+
+	//window.LettuceList.push(lettuceHypothesis);
+	//update2DUIWithLettuceHypothesis(lettuceHypothesis);
+	window.lettuceUpdateFromViewport(lettuceHypothesis);
+
+	return lettuceHypothesis;
+}
+
+function  drawLettuceOverlays() {
+	var lettuceOverlays = d3.select('#video-overlay')
+		.selectAll('g') // circle
+		.data(window.LettuceList);
+
+	var lettuceOverlaysEnter = lettuceOverlays
+		.enter()
+		.append('g')
+		.attr('transform', function(d){
+			return "translate(" + d.camera_bb_x * 640 + "," + d.camera_bb_y * 480 + ")";
+		});
+
+
+	lettuceOverlaysEnter
+		.append('circle')
+		.attr('r', function(d) {
+			return 640.0 * d.camera_bb_width / 2.0;
+		})
+		.attr('style', 'stroke:red;stroke-width:2;fill:none;');
+
+	lettuceOverlaysEnter
+		.append('text')
+		.text(function(d){
+			return d.lettuce_hypothesis_id;
+		})
+		.attr('style', 'color:red;')
+		.attr('x', 0)
+		.attr('y', 20)
+		.attr('fill','red')
+		.attr('text-anchor', 'middle')
+		.call(d3.drag());
+
+	lettuceOverlaysEnter
+		.append('circle')
+		.attr('r','2')
+		.attr('style', 'stroke:red;stroke-width:2;fill:none;');
+
+	lettuceOverlays
+		.exit()
+		.remove();	
+}
+
+function drawMenu(lettuceHypothesis) {
 	var menuItems = d3.select('#lettuce-menu')
 		.selectAll('div')
-		.data(window.LettuceList)
+		.data(window.LettuceList);
 
 	var menuItemsEnter = menuItems	
 		.enter()
@@ -22,7 +129,10 @@ function update2DUIWithLettuceHypothesis(lettuceHypothesis) {
 	menuItemsEnter.append('span')
 		.text(function(d) {
 			var pos = d.pose.position,
-				posLabel = ' (' + pos.x.toFixed(2) + ', ' + pos.y.toFixed(2) + ', ' + pos.z.toFixed(2) + ') ';
+				posLabel = ' 3D (' + pos.x.toFixed(2) + ', ' + pos.y.toFixed(2) + ', ' + 
+				pos.z.toFixed(2) + ') BB (' + 
+				d.camera_bb_x.toFixed(2) + ', ' + d.camera_bb_y.toFixed(2) + ', ' + 
+				d.camera_bb_width.toFixed(2) + ', ' + d.camera_bb_height.toFixed(2) + ')';
 			return 'Lettuce # ' + d.lettuce_hypothesis_id + posLabel;
 		});
 
@@ -43,29 +153,10 @@ function update2DUIWithLettuceHypothesis(lettuceHypothesis) {
 			lettuceZeroX = d3.select('#lz0').attr("value", lettuceHypothesis.pose.position.z);
 	}
 
-	// addPosButtons(menuItemsEnter, 'pos', id);	
-
-	// var forms = menuItemsEnter.append('form')
-	// 	.attr('onsubmit', 'changeCoordinates(event);')
-	// 	.attr('action', '#')
-	// 	.attr('class', 'pure-form')
-	// 	.attr('id', function(d) {
-	// 		return 'pos-' + d.id;
-	// 	});
-
-	// var fieldsets = forms.append('fieldset');
-	// fieldsets.append('input')
-	// 	.attr('name', function(d) {
-	// 		return 'pos-' + d.id;
-	// 	})
-
-
 	menuItems
 		.exit()
 		.remove();	
-
 }
-window.Vegebot.update2DUIWithLettuceHypothesis = update2DUIWithLettuceHypothesis;
 
 function addButtons(containers, command, label, lettuceHypothesisId) {
 	var buttonId = 'button-' + command + '-' + lettuceHypothesisId;
@@ -190,3 +281,9 @@ function changeLettuceZeroCoordinates(e) {
 
 	return false;
 }
+
+var addLettuce = function() {
+	LettucePlacingMode = true;
+}
+window.addLettuce = addLettuce;
+

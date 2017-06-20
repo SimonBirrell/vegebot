@@ -25,6 +25,7 @@ LETTUCE_Z_OFFSET = LETTUCE_RADIUS
 LETTUCE_IMAGE_TOPIC_NAME = '/vegebot/lettuce_video/raw_images'
 LETTUCE_HYPOTHESIS_TOPIC_NAME = '/vegebot/lettuce_hypotheses'
 LETTUCE_ANNOTATED_IMAGES_TOPIC_NAME = '/vegebot/lettuce_hypotheses/annotated_images'
+LETTUCE_UPDATES_FROM_VIEWPORT_TOPIC_NAME = '/vegebot/lettuce_hypotheses/updates_from_viewport'
 
 LETTUCE_IMAGE_TEST_FILE = '/home/simonbirrell/catkin_ws/src/vegebot/lettuce_test/nodes/lettuce_test.jpg'
 LETTUCE_CASCADE_FILE = '/home/simonbirrell/catkin_ws/src/vegebot/lettuce_detect/cascade_data/cascade.xml' 
@@ -36,8 +37,8 @@ DEFAULT_FAKE_LABEL = 'healthy'
 FIELD_HEIGHT_ANGLE = 30
 FIELD_WIDTH_ANGLE = 50
 # 
-FIELD_PIXEL_WIDTH = 0
-FIELD_PIXEL_HEIGHT = 0
+FIELD_PIXEL_WIDTH = 640
+FIELD_PIXEL_HEIGHT = 480
 
 FIELD_WIDTH_ANGLE_PARAM = '/vegebot/camera/field_width_angle'
 FIELD_HEIGHT_ANGLE_PARAM = '/vegebot/camera/field_height_angle'
@@ -46,6 +47,7 @@ Lettuce_hypothesis_topic = None
 Lettuce_images_raw_topic = None
 Lettuce_images_annotated_topic = None
 Lettuce_cascade = None
+Lettuce_updates_from_viewport_topic = None
 
 Last_lettuce_id = 0
 
@@ -55,6 +57,27 @@ OpenCVBridge = 0
 TfBuffer = None
 
 ########################### ROS Stuff ############################################
+
+def subscribe_to_lettuce_updates_from_viewport():
+    global Lettuce_updates_from_viewport_topic
+    rospy.loginfo("Subscribing to updates")
+    Lettuce_updates_from_viewport_topic = rospy.Subscriber(LETTUCE_UPDATES_FROM_VIEWPORT_TOPIC_NAME,
+                                                            LettuceHypothesis,
+                                                            receive_lettuce_from_viewport_update)
+
+def receive_lettuce_from_viewport_update(lettuce_hypothesis_message):
+    rospy.loginfo("********** GOT AN UPDATE FROM VIEWPORT ************")
+    rospy.loginfo(lettuce_hypothesis_message)
+    hypothesis = LettuceHypothesisComplete([(lettuce_hypothesis_message.camera_bb_x - (lettuce_hypothesis_message.camera_bb_width/2.0)) * FIELD_PIXEL_WIDTH,
+                                            (lettuce_hypothesis_message.camera_bb_y - (lettuce_hypothesis_message.camera_bb_height/2.0))* FIELD_PIXEL_HEIGHT,
+                                            lettuce_hypothesis_message.camera_bb_width * FIELD_PIXEL_WIDTH,
+                                            lettuce_hypothesis_message.camera_bb_height * FIELD_PIXEL_HEIGHT], 
+                                            lettuce_hypothesis_message.label, 
+                                            lettuce_hypothesis_message.probability,
+                                            lettuce_hypothesis_message.lettuce_hypothesis_id)
+    rospy.loginfo("Publish lettuce hypothesis from update")
+    hypothesis.publish()
+    rospy.loginfo("published.")
 
 def subscribe_to_lettuce_images_raw_topic(callback):
     global Lettuce_images_raw_topic   
@@ -89,7 +112,7 @@ def process_incoming_image(message):
         #Lettuce_hypothesis_topic.publish(lettuce_hypothesis_message)
         hypothesis.publish()
         print("Publish lettuce hypothesis")
-    print("Lettuce detector has processed an image!")    
+    print("Lettuce detector has processed an image!")   
 
 def set_up_lettuce_hypotheses_topic():
     global Lettuce_hypothesis_topic
@@ -204,13 +227,16 @@ def publish_camera_projection():
 ########################### LettuceHypothesisComplete ############################
 
 class LettuceHypothesisComplete:
-    def __init__(self, bounding_box, label=DEFAULT_FAKE_LABEL, probability=DEFAULT_FAKE_PROBABILITY):
+    def __init__(self, bounding_box, label=DEFAULT_FAKE_LABEL, probability=DEFAULT_FAKE_PROBABILITY, lettuce_id=None):
         global Last_lettuce_id
         self.bounding_box = bounding_box
         self.label = label
         self.probability = probability
-        Last_lettuce_id = Last_lettuce_id + 1
-        self.lettuce_id = Last_lettuce_id
+        if (lettuce_id==None):
+            Last_lettuce_id = Last_lettuce_id + 1
+            self.lettuce_id = Last_lettuce_id
+        else:
+            self.lettuce_id = lettuce_id
         self.calculate_3D_position()
 
     def lettuce_id(self):
@@ -238,14 +264,14 @@ class LettuceHypothesisComplete:
         if not hasattr(self, 'lettuce_id'):
             print("*** WARNING: LettuceHypothesis not properly created ****")             
         # print("Calculating 3D position")
-        centre_x = self.x2D() + self.w2D() / 2
-        centry_y = self.y2D() + self.h2D() / 2
+        self.centre_x = self.x2D() + self.w2D() / 2
+        self.centre_y = self.y2D() + self.h2D() / 2
         self.radius3D = points2D_to_distance3D(self.x2D(), self.y2D(), 
                                                self.x2D()+self.w2D(), 
                                                self.y2D()+self.h2D()) / 2.0
         rospy.loginfo("calculate_3D_pos")
         #self.centre3D = point_2D_to_point_3D(self.x2D(), self.y2D())
-        self.centre3D = point_2D_to_point_3D(centre_x, centry_y)
+        self.centre3D = point_2D_to_point_3D(self.centre_x, self.centre_y)
         self.centre3D.point.z = self.centre3D.point.z + self.radius3D
 
     def radius3D(self):
@@ -268,7 +294,13 @@ class LettuceHypothesisComplete:
         lettuce_hypothesis_message.radius = self.radius3D
         lettuce_hypothesis_message.probability = DEFAULT_FAKE_PROBABILITY
 
+        lettuce_hypothesis_message.camera_bb_x = self.centre_x / float(FIELD_PIXEL_WIDTH)
+        lettuce_hypothesis_message.camera_bb_y = self.centre_y / float(FIELD_PIXEL_HEIGHT)
+        lettuce_hypothesis_message.camera_bb_width = self.w2D() / float(FIELD_PIXEL_WIDTH)
+        lettuce_hypothesis_message.camera_bb_height = self.h2D() / float(FIELD_PIXEL_HEIGHT)
+
         Lettuce_hypothesis_topic.publish(lettuce_hypothesis_message)
+        rospy.loginfo(lettuce_hypothesis_message)
             
 
 ##################################################################################
@@ -361,6 +393,7 @@ if __name__ == '__main__':
     set_up_lettuce_hypotheses_topic()
     set_up_lettuce_images_annotated_topic()
     subscribe_to_lettuce_images_raw_topic(process_incoming_image)
+    subscribe_to_lettuce_updates_from_viewport()
 
     try:
         rospy.spin()

@@ -42,6 +42,13 @@
 		});
 		window.VegebotCommands = vegebotCommands;
 
+		var lettuceUpdatesFromViewport = new ROSLIB.Topic({
+			ros: ros,
+			name: '/vegebot/lettuce_hypotheses/updates_from_viewport',
+			messageType: 'vegebot_msgs/LettuceHypothesis'
+		});
+		window.LettuceUpdatesFromViewport = lettuceUpdatesFromViewport;
+
 		var viewer = new ROS3D.Viewer({
 			divID: 'urdf',
 			width: 640, // 400
@@ -106,6 +113,7 @@
 			console.log("................................");
 			console.log(lettuceHypothesis);
 			console.log("................................");
+			//alert(lettuceHypothesis.label);
 			if (lettuceHypothesis.label=='RESET_ALL') {
 				console.log('RESET_ALL received. Forgetting all lettuce Hypotheses...');
 				console.log(Viewer.scene.children);
@@ -188,7 +196,11 @@
  				}, 
  				radius: radius, 
  				probability: 0.99, 
- 				label: "lettuce_0"
+ 				label: "lettuce_0",
+ 				camera_bb_x: 0.0,
+ 				camera_bb_y: 0.0,
+ 				camera_bb_width: 40,
+ 				camera_bb_height: 40
 			};
 
 			window.LettuceList.push(lettuceHypothesis);
@@ -394,3 +406,11 @@ function update3DdisplayWithLettuceHypothesis(lettuceHypothesis) {
 	model3D.position = pos;
 }
 window.update3DdisplayWithLettuceHypothesis = update3DdisplayWithLettuceHypothesis;
+
+
+function lettuceUpdateFromViewport(lettuceHypothesis) {
+	var command = new ROSLIB.Message(lettuceHypothesis);
+
+	window.LettuceUpdatesFromViewport.publish(command);	
+}
+window.lettuceUpdateFromViewport = lettuceUpdateFromViewport;

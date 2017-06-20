@@ -154,14 +154,24 @@
 <body onload="init()">
 	<div class='pure-g'>
 
-    <div id="video" class="pure-u-1-2"><img src="http://localhost:8080/stream?topic=/usb_cam/image_raw"></img></div>
-		<div id='urdf' class='pure-u-1-2'></div>
+  <div class="pure-u-1-2" style="position:relative; display:inline-block;">
+    <div id="video"><img src="http://localhost:8080/stream?topic=/usb_cam/image_raw" style="position:absolute;"></img></div>
+    <svg id="video-overlay" style="position:absolute;left:0;top:0;" width="640" height="480">
+      <rect x="0" y="0" width="100%" height="100%" fill="none" stroke="black" />
+    </svg>
+  </div>
+
+    <!--
+    <div id='annotated' class='pure-u-1-4'><img src='http://localhost:8080/snapshot?topic=/vegebot/lettuce_hypotheses/annotated_images?width=400&height=250'></img></div>
+    -->
+		<div id='urdf' class='pure-u-1-4'></div>
 
 		<div class="pure-u-1-1">
 			<button onclick="sendVegebotCommand('park');" class="pure-button">Park</button>
       <button onclick="sendVegebotCommand('detect');" class="pure-button">Detect</button>
       <button onclick="sendVegebotCommand('detect_image');" class="pure-button">Detect Image</button>
       <button onclick="sendVegebotCommand('detect_camera');" class="pure-button">Detect Camera</button>
+      <button onclick="addLettuce();" class="pure-button">+ Lettuce</button>
 		</div>
     <div class="pure-u-1-1 status">
       <span id="vegebot-status">&nbsp;</span>
