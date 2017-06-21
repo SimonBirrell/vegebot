@@ -7,6 +7,9 @@
 -->
 
   <!-- Vegebot platform dimensions -->
+
+  <xacro:property name="MPI" value="3.14159265359" />
+  
   <xacro:property name="floor_thickness" value="0.05" />
 
   <xacro:property name="platform_width" value="2.12" />
@@ -59,6 +62,17 @@
   <xacro:property name="ee_camera_offset_x" value="0.1" />
   <xacro:property name="camera_size" value="0.05" />
   <xacro:property name="camera_offset_z" value="0.03" />
+
+  <xacro:property name="overhead_camera_support1_length" value="1.2" />
+  <xacro:property name="overhead_camera_support1_width" value="0.045" />
+  <xacro:property name="overhead_camera_support1_height" value="0.045" />
+  <xacro:property name="overhead_camera_support2_length" value="0.88" />
+  <xacro:property name="overhead_camera_support2_width" value="0.045" />
+  <xacro:property name="overhead_camera_support2_height" value="0.045" />
+  <xacro:property name="overhead_camera_length" value="0.06" />
+  <xacro:property name="overhead_camera_width" value="0.1" />
+  <xacro:property name="overhead_camera_height" value="0.045" />
+
 
   <xacro:macro name="wheel_assembly">
     <visual>
@@ -247,6 +261,57 @@
       </material>
     </visual>
   </link>
+
+  <link name="overhead_camera_support1">
+    <visual>
+      <geometry>
+        <box size="${overhead_camera_support1_length} ${overhead_camera_support1_width} ${overhead_camera_support1_height}" />
+      </geometry>
+      <origin xyz="-0.6 0.0 0.0" />
+      <material name="gray">
+         <color rgba="0.1 0.1 0.1 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="platform_to_overhead_camera_support1_joint" type="fixed">
+    <parent link="platform" />
+    <child link = "overhead_camera_support1" />
+    <origin xyz="${-front_platform_to_origin_arm} 0.0 ${platform_height}" rpy="0.0 ${MPI/2.0} 0.0" />
+  </joint>
+
+  <link name="overhead_camera_support2">
+    <visual>
+      <geometry>
+        <box size="${overhead_camera_support2_length} ${overhead_camera_support2_width} ${overhead_camera_support2_height}" />
+      </geometry>
+      <origin xyz="${-overhead_camera_support2_length/2.0} 0.0 0.0" />
+      <material name="gray">
+         <color rgba="0.1 0.1 0.1 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="overhead_camera_support1_to_overhead_camera_support2_joint" type="fixed">
+    <parent link="overhead_camera_support1" />
+    <child link = "overhead_camera_support2" />
+    <origin xyz="${-overhead_camera_support1_length + (overhead_camera_support2_width/2.0)} 0.0 ${overhead_camera_support2_width/2.0}" rpy="0.0 ${MPI/2.0} 0.0" />
+  </joint>
+
+  <link name="overhead_camera">
+    <visual>
+      <geometry>
+        <box size="${overhead_camera_length} ${overhead_camera_width} ${overhead_camera_height}" />
+      </geometry>
+      <origin xyz="${-overhead_camera_length/2.0} 0.0 0.0" />
+      <material name="red">
+         <color rgba="1 0 0 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="overhead_camera_support2_to_overhead_camera_joint" type="fixed">
+    <parent link="overhead_camera_support2" />
+    <child link = "overhead_camera" />
+    <origin xyz="${-overhead_camera_support2_length + (overhead_camera_height/2.0)} 0.0 ${overhead_camera_support2_height/2.0 + overhead_camera_height/2.0}" rpy="0.0 ${MPI/2.0} 0.0" />
+  </joint>
 
   <joint name="world_joint" type="fixed">
     <parent link="world" />
