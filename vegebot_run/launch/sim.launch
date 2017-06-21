@@ -9,10 +9,8 @@
  	<node pkg="lettuce_test" name="test" type="test">
 	</node>
 
-<!--
 	<node pkg="lettuce_detect" name="lettuce_detector" type="lettuce_detector">
 	</node>
--->
 
 	<!-- UI infrastructure -->
 

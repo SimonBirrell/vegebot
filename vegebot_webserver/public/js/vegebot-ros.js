@@ -42,6 +42,20 @@
 		});
 		window.VegebotCommands = vegebotCommands;
 
+		var samplerCommands = new ROSLIB.Topic({
+			ros: ros,
+			name: '/vegebot/sampler/commands',
+			messageType: 'std_msgs/String'
+		});
+		window.samplerCommands = samplerCommands;
+
+		var samplerLettuceHypotheses = new ROSLIB.Topic({
+			ros: ros,
+			name: '/vegebot/sampler/lettuce_hypotheses',
+			messageType: 'vegebot_msgs/LettuceHypothesis'
+		});
+		window.samplerLettuceHypotheses = samplerLettuceHypotheses;
+
 		var lettuceUpdatesFromViewport = new ROSLIB.Topic({
 			ros: ros,
 			name: '/vegebot/lettuce_hypotheses/updates_from_viewport',
@@ -462,3 +476,60 @@ function lettuceUpdateFromViewport(lettuceHypothesis) {
 	window.LettuceUpdatesFromViewport.publish(command);	
 }
 window.lettuceUpdateFromViewport = lettuceUpdateFromViewport;
+
+function openStreamAndSaveSample() {
+	sendOpenSampleCommand();
+	for (var i=0; i<LettuceList.length; i++) {
+		var lettuceHypothesis = LettuceList[i];
+		sendVegetableHypothesisToSampler(lettuceHypothesis);
+	}
+	sendCloseSampleCommand();
+}
+window.openStreamAndSaveSample = openStreamAndSaveSample;
+
+function sendOpenSampleCommand() {
+	sendSamplerCommand('open_sample');
+}
+
+function sendCloseSampleCommand() {
+	sendSamplerCommand('close_sample');
+}
+
+function sendSamplerCommand(commandString) {
+	var command = new ROSLIB.Message({
+		data: commandString
+	});
+
+	window.samplerCommands.publish(command);
+}
+
+function sendVegetableHypothesisToSampler(lettuceHypothesis) {
+	var lettuceHypothesisCopy = {
+		camera_bb_x: lettuceHypothesis.camera_bb_x,
+		camera_bb_y: lettuceHypothesis.camera_bb_y,
+		camera_bb_width: lettuceHypothesis.camera_bb_width,
+		camera_bb_height: lettuceHypothesis.camera_bb_height,
+		label: lettuceHypothesis.label,
+		lettuce_hypothesis_id: lettuceHypothesis.lettuce_hypothesis_id,
+		probability: lettuceHypothesis.probability,
+		pose: {
+			position: {
+				x: lettuceHypothesis.pose.position.x,
+				y: lettuceHypothesis.pose.position.y,
+				z: lettuceHypothesis.pose.position.z,
+			},
+			orientation: {
+				w: lettuceHypothesis.pose.orientation.w,
+				x: lettuceHypothesis.pose.orientation.x,
+				y: lettuceHypothesis.pose.orientation.y,
+				z: lettuceHypothesis.pose.orientation.z,
+			}
+		}
+	};
+	var command = new ROSLIB.Message(lettuceHypothesisCopy);
+	console.log(lettuceHypothesis);
+	console.log(lettuceHypothesisCopy);
+
+	window.samplerLettuceHypotheses.publish(command);	
+}
+

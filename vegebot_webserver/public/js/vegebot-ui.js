@@ -405,4 +405,8 @@ var clearLettuce = function(lettuce_hypothesis_id) {
 }
 window.clearLettuce = clearLettuce;
 
-
+var saveSample = function() {
+	console.log("Saving sample...");
+	openStreamAndSaveSample();
+}
+window.saveSample = saveSample;
