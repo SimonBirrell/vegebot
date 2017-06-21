@@ -296,7 +296,7 @@
     <origin xyz="${-overhead_camera_support1_length + (overhead_camera_support2_width/2.0)} 0.0 ${overhead_camera_support2_width/2.0}" rpy="0.0 ${MPI/2.0} 0.0" />
   </joint>
 
-  <link name="overhead_camera">
+  <link name="overhead_camera_body">
     <visual>
       <geometry>
         <box size="${overhead_camera_length} ${overhead_camera_width} ${overhead_camera_height}" />
@@ -307,11 +307,20 @@
       </material>
     </visual>
   </link>
-  <joint name="overhead_camera_support2_to_overhead_camera_joint" type="fixed">
+  <joint name="overhead_camera_support2_to_overhead_camera_body_joint" type="fixed">
     <parent link="overhead_camera_support2" />
-    <child link = "overhead_camera" />
+    <child link = "overhead_camera_body" />
     <origin xyz="${-overhead_camera_support2_length + (overhead_camera_height/2.0)} 0.0 ${overhead_camera_support2_height/2.0 + overhead_camera_height/2.0}" rpy="0.0 ${MPI/2.0} 0.0" />
   </joint>
+
+  <link name="overhead_camera">
+  </link>
+  <joint name="overhead_camera_body_to_overhead_camera_joint" type="fixed">
+    <parent link="overhead_camera_body" />
+    <child link = "overhead_camera" />
+    <origin xyz="0.0 0.0 0.0" rpy="${MPI + MPI/2.0} ${MPI} 0.0" />
+  </joint>
+
 
   <joint name="world_joint" type="fixed">
     <parent link="world" />

@@ -3,14 +3,13 @@
 	<param name="vegebot/simulation" value="false" />
 	<param name="/move_group/trajectory_execution/allowed_start_tolerance" value="0.0" />
 
-<!--
+
 	<node pkg="vegebot_commander" name="vegebot_commander" type="vegebot_commander">
 	</node>
--->
-
 
 	<node pkg="lettuce_test" name="test" type="test" output="screen">
 	</node>
+
 
 	<node pkg="lettuce_detect" name="lettuce_detector" type="lettuce_detector">
 	</node>
@@ -26,6 +25,8 @@
 	</node>
 	<include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch">
 	</include>
+		<node pkg="web_video_server" name="web_video_server" type="web_video_server">
+	</node>  
 
 	<!-- UR10 Robot Arm -->
 	<include file="$(find vegebot_run)/launch/vegebot_bringup.launch">
@@ -33,10 +34,12 @@
 		<arg name="robot_ip" value="192.168.2.5" />
 		
 	</include>
+
 	<include file="$(find vegebot_run)/launch/vegebot_moveit_planning_execution.launch">
 		<arg name="sim" value="false" />
 		<arg name="limited" value="false" />
 	</include>
+
 	<!-- USB Camera -->
 
 
