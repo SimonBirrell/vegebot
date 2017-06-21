@@ -17,7 +17,7 @@ function update2DUIWithLettuceHypothesis(lettuceHypothesis) {
 
 	setUpMouseHandlers();
 	drawLettuceOverlays();
-	drawMenu(lettuceHypothesis);
+	drawMenus(lettuceHypothesis);
 }
 window.Vegebot.update2DUIWithLettuceHypothesis = update2DUIWithLettuceHypothesis;
 
@@ -77,7 +77,9 @@ function addUserLettuceAtXY(x, y, r) {
 function  drawLettuceOverlays() {
 	var lettuceOverlays = d3.select('#video-overlay')
 		.selectAll('g') // circle
-		.data(window.LettuceList);
+		.data(window.LettuceList, function(d) {
+			return d.lettuce_hypothesis_id;
+		});
 
 	var lettuceOverlaysEnter = lettuceOverlays
 		.enter()
@@ -121,10 +123,32 @@ function drawMenu(lettuceHypothesis) {
 		.selectAll('div')
 		.data(window.LettuceList);
 
-	var menuItemsEnter = menuItems	
+	var rowDivs = menuItems	
 		.enter()
 		.append('div')
-		.attr('class', 'pure-u-1 pure-u-md-1-1 lettuce-menu-item');
+		.attr('class', 'pure-u-1-1 lettuce-menu-item-holder')
+		;
+
+		//.append('div')
+		//.attr('class', 'pure-u-1 pure-u-md-1-1 lettuce-menu-item')
+		;
+
+	var menuItemsEnter = rowDivs
+		.append('div')
+		.attr('class', 'pure-u-1-2 lettuce-menu-item')
+		;
+
+	var menuButtons = rowDivs
+		.append('div')
+		.attr('class', 'pure-u-1-2 lettuce-menu-item')
+		;
+
+	menuItemsEnter.append('button')
+		.attr('class', 'pure-button lettuce-close-button')
+		.attr('onClick', function(d) {
+			return "clearLettuce(" + d.lettuce_hypothesis_id.toString() + ");"
+		})
+		.text("X");	
 
 	menuItemsEnter.append('span')
 		.text(function(d) {
@@ -139,13 +163,13 @@ function drawMenu(lettuceHypothesis) {
 	var buttonId = 'button-pick-' + lettuceHypothesis.lettuce_hypothesis_id;
 
 	var id = lettuceHypothesis.lettuce_hypothesis_id;
-	addButtons(menuItemsEnter, 'pick', 'all', id);	
-	addButtons(menuItemsEnter, 'release', 'rel', id);	
-	addButtons(menuItemsEnter, 'place', 'pla', id);	
-	addButtons(menuItemsEnter, 'up', 'up', id);	
-	addButtons(menuItemsEnter, 'cut', 'cut', id);	
-	addButtons(menuItemsEnter, 'down', 'dwn', id);	
-	addButtons(menuItemsEnter, 'pregrasp', 'pre', id);	
+	addButtons(menuButtons, 'pick', 'all', id);	
+	addButtons(menuButtons, 'release', 'rel', id);	
+	addButtons(menuButtons, 'place', 'pla', id);	
+	addButtons(menuButtons, 'up', 'up', id);	
+	addButtons(menuButtons, 'cut', 'cut', id);	
+	addButtons(menuButtons, 'down', 'dwn', id);	
+	addButtons(menuButtons, 'pregrasp', 'pre', id);	
 
 	if (lettuceHypothesis.lettuce_hypothesis_id == "0") {
 		var lettuceZeroX = d3.select('#lx0').attr("value", lettuceHypothesis.pose.position.x),
@@ -156,6 +180,86 @@ function drawMenu(lettuceHypothesis) {
 	menuItems
 		.exit()
 		.remove();	
+}
+
+function drawMenus(lettuceHypothesis) {
+	console.log("redrawing menus with " + LettuceList.length.toString() + " lettuces.");
+	var menuItems = d3.select('#lettuce-menu')
+		.selectAll('.lettuce-menu-item-holder')
+		.data(window.LettuceList, function(d) {
+			return d.lettuce_hypothesis_id;
+		});
+
+	var rowDivs = menuItems	
+		.enter()
+		.append('div')
+		.attr('class', 'pure-u-1-1 lettuce-menu-item-holder')
+		.attr('id', function(d) {
+			console.log(d.lettuce_hypothesis_id);
+			return "lettuce-menu-item-holder-" + d.lettuce_hypothesis_id;
+		})
+		;
+
+		//.append('div')
+		//.attr('class', 'pure-u-1 pure-u-md-1-1 lettuce-menu-item')
+		;
+
+	var menuItemsEnter = rowDivs
+		.append('div')
+		.attr('class', 'pure-u-1-2 lettuce-menu-item')
+		;
+
+	var menuButtons = rowDivs
+		.append('div')
+		.attr('class', 'pure-u-1-2 lettuce-menu-item')
+		;
+
+	menuItemsEnter.append('button')
+		.attr('class', 'pure-button lettuce-close-button')
+		.attr('onClick', function(d) {
+			return "clearLettuce(" + d.lettuce_hypothesis_id.toString() + ");"
+		})
+		.text("X");	
+
+	menuItemsEnter.append('span')
+		.text(function(d) {
+			var pos = d.pose.position,
+				posLabel = ' 3D (' + pos.x.toFixed(2) + ', ' + pos.y.toFixed(2) + ', ' + 
+				pos.z.toFixed(2) + ') BB (' + 
+				d.camera_bb_x.toFixed(2) + ', ' + d.camera_bb_y.toFixed(2) + ', ' + 
+				d.camera_bb_width.toFixed(2) + ', ' + d.camera_bb_height.toFixed(2) + ')';
+			return 'Lettuce # ' + d.lettuce_hypothesis_id + posLabel;
+		});
+
+	var buttonId = 'button-pick-' + lettuceHypothesis.lettuce_hypothesis_id;
+
+	addMenuButtons(menuButtons, 'pick', 'all');	
+	addMenuButtons(menuButtons, 'release', 'rel');	
+	addMenuButtons(menuButtons, 'place', 'pla');	
+	addMenuButtons(menuButtons, 'up', 'up');	
+	addMenuButtons(menuButtons, 'cut', 'cut');	
+	addMenuButtons(menuButtons, 'down', 'dwn');	
+	addMenuButtons(menuButtons, 'pregrasp', 'pre');	
+
+	// if (lettuceHypothesis.lettuce_hypothesis_id == "0") {
+	// 	var lettuceZeroX = d3.select('#lx0').attr("value", lettuceHypothesis.pose.position.x),
+	// 		lettuceZeroY = d3.select('#ly0').attr("value", lettuceHypothesis.pose.position.y),
+	// 		lettuceZeroZ = d3.select('#lz0').attr("value", lettuceHypothesis.pose.position.z);
+	// }
+
+	menuItems
+		.exit()
+		.remove();	
+}
+
+function addMenuButtons(containers, command, label) {
+	containers.append('button')
+		.attr('class', 'pure-button lettuce-pick-button')
+		.attr('onClick', "doAction(this.id, '" + command + "');")
+		.attr('id', function(d) {
+			return 'button-' + command + '-' + d.lettuce_hypothesis_id.toString();
+		})
+		.text(label);		
 }
 
 function addButtons(containers, command, label, lettuceHypothesisId) {
@@ -286,4 +390,19 @@ var addLettuce = function() {
 	LettucePlacingMode = true;
 }
 window.addLettuce = addLettuce;
+
+var clearLettuces = function() {
+	LettucePlacingMode = false;
+	eraseLettuces();
+}
+window.clearLettuces = clearLettuces;
+
+var clearLettuce = function(lettuce_hypothesis_id) {
+	LettucePlacingMode = false;
+	lettuce_hypothesis_id = lettuce_hypothesis_id.toString();
+	console.log(lettuce_hypothesis_id);
+	eraseLettuce(lettuce_hypothesis_id);
+}
+window.clearLettuce = clearLettuce;
+
 

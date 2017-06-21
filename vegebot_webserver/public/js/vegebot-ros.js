@@ -137,8 +137,9 @@
 				// New lettuce
 				console.log("New lettuce: " + lettuce_hypothesis_id);
 				lettuceHypothesis.model3D = create3DLettuce(radius, x, y, z);
-				Lettuces[lettuce_hypothesis_id] = lettuceHypothesis;
-				LettuceList.push(lettuceHypothesis);
+				addLettuce(lettuceHypothesis);
+				//Lettuces[lettuce_hypothesis_id] = lettuceHypothesis;
+				//LettuceList.push(lettuceHypothesis);
 			}
 
 			lettuceHypothesis = Lettuces[lettuce_hypothesis_id]; 
@@ -146,6 +147,52 @@
 			window.Vegebot.update2DUIWithLettuceHypothesis(lettuceHypothesis);
 			//console.log("Now tracking " + Object.keys(Lettuces).length + " lettuces.")
 		}
+
+		function addLettuce(lettuceHypothesis) {
+			var lettuce_hypothesis_id = lettuceHypothesis.lettuce_hypothesis_id;
+			console.log("Adding lettuce " + lettuce_hypothesis_id + " to list and hash");
+			Lettuces[lettuce_hypothesis_id] = lettuceHypothesis;
+			LettuceList.push(lettuceHypothesis);			
+		}
+
+		function eraseLettuce(lettuce_hypothesis_id) {
+			console.log("eraseLettuce " + lettuce_hypothesis_id);
+			console.log("Before erasure we had " + LettuceList.length);
+			var index = -1;
+			for (var i=0; i<LettuceList.length; i++) {
+				var id = LettuceList[i].lettuce_hypothesis_id;
+				if (id==lettuce_hypothesis_id) {
+					index = i;
+					console.log("Index " + index.toString());
+					break;
+				}
+			}
+			if (index==-1) {
+				console.log("ERROR: Can't find lettuce with id " + lettuce_hypothesis_id.toString());
+				foo
+				return;
+			}
+
+			var lettuceHypothesis = Lettuces[lettuce_hypothesis_id],
+				scene = Viewer.scene,
+				model3D = lettuceHypothesis.model3D;
+			if (lettuceHypothesis.model3D) {
+				console.log("Removing object from scene");
+				scene.remove(model3D);
+				//lettuceHypothesis.model3D.dispose();
+			}
+			console.log("Before splice we had " + LettuceList.length);	
+			console.log("Splice " + index.toString());	
+			console.log("About to splice lettuce at index " + index.toString());
+			console.log("Whose ID is " + LettuceList[index].lettuce_hypothesis_id.toString());	
+			LettuceList.splice(index, 1);
+			console.log("After splice we had " + LettuceList.length);
+			delete Lettuces[lettuce_hypothesis_id];
+			console.log("After deletion we had " + LettuceList.length);
+			update2DUIWithLettuceHypothesis(0);			
+			console.log("After erasure we had " + LettuceList.length);
+		}
+		window.eraseLettuce = eraseLettuce;
 
 		function eraseLettuces() {
 			var lettuceLength = LettuceList.length;
@@ -170,6 +217,7 @@
 			//LettuceList = [];
 			update2DUIWithLettuceHypothesis(0);
 		}
+		window.eraseLettuces = eraseLettuces;
 
 		function createVirtualLettuceZero() {
 			console.log("Creating fake lettuce for manual experiments.");
@@ -252,14 +300,14 @@
 		}
 
 		function setParamCallback(name, value) {
-			console.log("Callback");
-			console.log(name);
-			console.log(value);
+			//console.log("Callback");
+			//console.log(name);
+			//console.log(value);
 			for (var i=0; i<window.Vegebot.rosParameters.length; i++) {
 				var param = window.Vegebot.rosParameters[i];
 				if (param.name==name) {
 					param.value = value;
-					console.log("Set " + name + " to " + value + " in dynamic callback");
+					//console.log("Set " + name + " to " + value + " in dynamic callback");
 					return;
 				}
 			}
@@ -381,7 +429,7 @@ function sendVegebotCommand(commandString) {
 }
 
 function create3DLettuce(radius, x, y, z) {
-	console.log("**** Creating 3D sphere *****");
+	//console.log("**** Creating 3D sphere *****");
 	var geometry = new THREE.SphereGeometry( radius, 32, 32 );
 	var material = new THREE.MeshLambertMaterial( {color: 0x33ff33} );
 	var sphere = new THREE.Mesh( geometry, material );
