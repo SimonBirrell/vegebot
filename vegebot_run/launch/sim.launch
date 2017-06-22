@@ -12,6 +12,9 @@
 	<node pkg="lettuce_detect" name="lettuce_detector" type="lettuce_detector">
 	</node>
 
+	<node pkg="lettuce_sampler" name="lettuce_sampler" type="lettuce_sampler">
+	</node>
+
 	<!-- UI infrastructure -->
 
 	<node pkg="vegebot_webserver" name="vegebot_webserver" type="vegebot_webserver.sh">	

@@ -1,0 +1,126 @@
+#!/usr/bin/env python
+
+import sys, os
+import time
+import random
+import rospy
+import cv2
+from std_msgs.msg import String, Bool
+from vegebot_msgs.msg import LettuceHypothesis
+from geometry_msgs.msg import Pose
+from sensor_msgs.msg import Image, CompressedImage
+from cv_bridge import CvBridge, CvBridgeError
+from random import randint
+
+Last_camera_image = None
+LettuceHypotheses = None
+OpenCVBridge = None
+
+CAMERA_TOPIC_NAME = '/usb_cam/image_raw'
+DATASET_DIRECTORY = '/home/simonbirrell/dataset/'
+
+def set_up_lettuce_hypotheses_topic():
+    rospy.Subscriber("/vegebot/sampler/lettuce_hypotheses", LettuceHypothesis, receive_hypothesis)
+
+def set_up_sampler_command_topic():
+    rospy.Subscriber('/vegebot/sampler/commands', String, receive_command)
+
+def set_up_camera_topic():
+    rospy.Subscriber(CAMERA_TOPIC_NAME, Image, receive_camera_image)
+
+def receive_command(message):
+	command = message.data
+	if (command=='open_sample'):
+		open_sample()
+	elif (command=='close_sample'):
+		close_sample()
+	else:
+		rospy.loginfo("**** ERROR: Unknown sampler command ****")
+
+def receive_camera_image(message):
+	global Last_camera_image
+	Last_camera_image = message	
+
+def receive_hypothesis(message):
+	rospy.loginfo("Save Hypothesis")
+	LettuceHypotheses.append(message)
+
+def open_sample():
+	global LettuceHypotheses, Filename
+	LettuceHypotheses = []
+	Filename = get_next_available_filename()
+
+def close_sample():
+	global Filename
+
+	if Filename==None:
+		rospy.loginfo("**** Filename not defined ****")
+	save_camera_image(Filename)
+	save_lettuce_hypotheses(Filename)	
+
+def save_camera_image(filename):
+	global OpenCVBridge
+
+	full_filename = pathname(filename, 'images', 'jpg')
+	rospy.loginfo("Saving camera image " + full_filename)
+	if (Last_camera_image==None):
+		rospy.loginfo("ERROR: No camera image received yet on " + CAMERA_TOPIC_NAME)
+	else:
+		rospy.loginfo("Save Image")
+		try:
+			# Convert your ROS Image message to OpenCV2
+			cv2_img = OpenCVBridge.imgmsg_to_cv2(Last_camera_image, "bgr8")
+		except CvBridgeError, e:
+			print(e)
+		else:
+			# Save your OpenCV2 image as a jpeg 
+			cv2.imwrite(full_filename, cv2_img)
+
+		#image_message = convert_image_rgb(Last_camera_image)
+		#publish_image_from_array(LETTUCE_IMAGE_TOPIC_NAME, image_message)	
+
+def get_next_available_filename():
+	import os
+
+	images_directory = DATASET_DIRECTORY + 'images' + '/'
+	i = 0
+	while os.path.exists(images_directory + "%08d.jpg" % i):
+		i += 1
+	return "%08d" % i
+
+def save_lettuce_hypotheses(filename):
+	full_pathname = pathname(filename, 'labels', 'txt')
+	text_file = open(full_pathname, "w")
+	for h in LettuceHypotheses:
+		text_file.write("lettuce: %s, %s, %s, %s, %s, %s, %s, %s\n" % (h.label, h.camera_bb_x, h.camera_bb_y, h.camera_bb_width, h.camera_bb_height, h.pose.position.x, h.pose.position.y, h.pose.position.z ))
+	text_file.close()
+
+def set_up_opencv():
+	global OpenCVBridge
+	OpenCVBridge = CvBridge()
+
+def pathname(filename, subdirectory, extension):
+	return DATASET_DIRECTORY + subdirectory + '/' + filename + '.' + extension
+
+# Might need this
+
+def convert_image_rgb(image):
+	global OpenCVBridge
+	cv_image = OpenCVBridge.imgmsg_to_cv2(image, desired_encoding='bgr8')
+	new_image = OpenCVBridge.cv2_to_imgmsg(cv_image, encoding='bgr8')
+	return new_image
+	#return image
+
+
+if __name__ == '__main__':
+    print("Booting up Lettuce Sampler")
+    set_up_opencv()
+    set_up_lettuce_hypotheses_topic()
+    set_up_sampler_command_topic()
+    set_up_camera_topic()
+
+    rospy.init_node('lettuce_sampler', anonymous=True)
+    rate = rospy.Rate(1)
+    while True:
+    	rate.sleep()
+    print("Done.")
