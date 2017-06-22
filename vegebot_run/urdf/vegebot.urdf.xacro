@@ -33,9 +33,11 @@
   <xacro:property name="wheel_length" value="0.10" />
   <xacro:property name="wheel_radius" value="0.20" />
 
-  <xacro:property name="bucket_length" value="0.24" />
+  <xacro:property name="bucket_length" value="0.29" />
   <xacro:property name="bucket_radius" value="0.14" />
   <xacro:property name="ee_bucket_offset_x" value="0.12" />
+  <xacro:property name="ee_bucket_offset_y" value="-0.13" />
+  <xacro:property name="ee_bucket_offset_z" value="0.0" />
 
   <xacro:property name="pneumatic_width" value="0.22" />
   <xacro:property name="pneumatic_depth" value="0.06" />
@@ -72,6 +74,8 @@
   <xacro:property name="overhead_camera_length" value="0.06" />
   <xacro:property name="overhead_camera_width" value="0.1" />
   <xacro:property name="overhead_camera_height" value="0.045" />
+
+  <xacro:property name="arm_to_overhead_camera_support1" value="0.43" />
 
 
   <xacro:macro name="wheel_assembly">
@@ -276,7 +280,7 @@
   <joint name="platform_to_overhead_camera_support1_joint" type="fixed">
     <parent link="platform" />
     <child link = "overhead_camera_support1" />
-    <origin xyz="${-front_platform_to_origin_arm} 0.0 ${platform_height}" rpy="0.0 ${MPI/2.0} 0.0" />
+    <origin xyz="${-arm_to_overhead_camera_support1} 0.0 ${rear_platform_height}" rpy="0.0 ${MPI/2.0} 0.0" />
   </joint>
 
   <link name="overhead_camera_support2">
@@ -425,7 +429,7 @@
   <joint name="end_effector_bucket_joint" type="fixed">
     <parent link="ee_link" />
     <child link = "bucket_link" />
-    <origin xyz="${ee_bucket_offset_x} 0.0 0.0" rpy="0.0 1.5708 0.0" />
+    <origin xyz="${ee_bucket_offset_x} ${ee_bucket_offset_y} ${ee_bucket_offset_z}" rpy="0.0 1.5708 0.0" />
   </joint>
 
   <link name="pneumatic_link">
