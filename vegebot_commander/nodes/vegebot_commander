@@ -674,14 +674,18 @@ class BladeControllerUr10(BladeController):
 
     def blade_cut(self):
         print("== ACTIVATING BLADE!!!")
-        self.blade_IO(UR10_BLADE_PIN8, 0)
-        self.blade_IO(UR10_BLADE_PIN9, 0)
+        #self.blade_IO(UR10_BLADE_PIN8, 0)
+        self.blade_IO(UR10_BLADE_PIN9, 1)
+        rospy.sleep(4)
+        self.blade_IO(UR10_BLADE_PIN8, 1)
         return True
 
     def blade_release(self):    
         print("== RETRACTING BLADE!!!")
+        #self.blade_IO(UR10_BLADE_PIN8, 0)
+        self.blade_IO(UR10_BLADE_PIN9, 0)
+        rospy.sleep(4)
         self.blade_IO(UR10_BLADE_PIN8, 0)
-        self.blade_IO(UR10_BLADE_PIN9, 1)
         #rospy.sleep(0.5)
         #self.blade_IO(UR10_BLADE_PIN8, 1)
         #self.blade_IO(UR10_BLADE_PIN9, 0)
