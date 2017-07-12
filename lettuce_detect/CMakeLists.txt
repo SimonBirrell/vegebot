@@ -8,6 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   vegebot_msgs
+  image_geometry
 )
 
 ## System dependencies are found with CMake's conventions

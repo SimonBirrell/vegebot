@@ -11,8 +11,9 @@ import tf2_geometry_msgs
 from std_msgs.msg import String, Bool
 from vegebot_msgs.msg import LettuceHypothesis
 from geometry_msgs.msg import Pose, Point, PointStamped
-from sensor_msgs.msg import Image, CompressedImage
+from sensor_msgs.msg import Image, CompressedImage, CameraInfo
 from cv_bridge import CvBridge, CvBridgeError
+from image_geometry import PinholeCameraModel
 
 NODE_NAME = 'lettuce_detector'
 
@@ -22,6 +23,7 @@ LETTUCE_X_SPACING = 0.3
 LETTUCE_Y_SPACING = 0.3
 LETTUCE_Z_OFFSET = LETTUCE_RADIUS
 
+LETTUCE_CAMERA_INFO_TOPIC_NAME = '/camera1/usb_cam/camera_info'
 LETTUCE_IMAGE_TOPIC_NAME = '/vegebot/lettuce_video/raw_images'
 LETTUCE_HYPOTHESIS_TOPIC_NAME = '/vegebot/lettuce_hypotheses'
 LETTUCE_ANNOTATED_IMAGES_TOPIC_NAME = '/vegebot/lettuce_hypotheses/annotated_images'
@@ -48,6 +50,8 @@ Lettuce_images_raw_topic = None
 Lettuce_images_annotated_topic = None
 Lettuce_cascade = None
 Lettuce_updates_from_viewport_topic = None
+Overhead_camera_info = None
+Overhead_camera_model = None
 
 Last_lettuce_id = 0
 
@@ -57,6 +61,15 @@ OpenCVBridge = 0
 TfBuffer = None
 
 ########################### ROS Stuff ############################################
+
+def subscribe_to_camera_info():
+    rospy.loginfo("Subscribing to camera info")
+    rospy.Subscriber(LETTUCE_CAMERA_INFO_TOPIC_NAME, CameraInfo, receive_camera_info)
+
+def receive_camera_info(camera_info_message):
+    rospy.loginfo("Camera info received !!!!!")
+    Overhead_camera_info = camera_info_message
+    Overhead_camera_model = PinholeCameraModel.fromCameraInfo(camera_info_message)    
 
 def subscribe_to_lettuce_updates_from_viewport():
     global Lettuce_updates_from_viewport_topic
@@ -238,6 +251,7 @@ class LettuceHypothesisComplete:
         else:
             self.lettuce_id = lettuce_id
         self.calculate_3D_position()
+        #self.calculate_3D_position_from_model()
 
     def lettuce_id(self):
         return self.lettuce_id    
@@ -306,6 +320,16 @@ class LettuceHypothesisComplete:
 ##################################################################################
 
 ########################### 3D Geometry ##########################################
+
+def point_2D_to_point_3D_using_camera_model(x2D, y2D):
+    global Overhead_camera_model
+
+    rospy.loginfo("Raw u,v")
+    rectified_x, rectified_y = Overhead_camera_model.rectifyPoint(x2D, y2D)
+    rospy.loginfo(rectified_x, rectified_y)
+    ray = Overhead_camera_model.projectPixelTo3dRay(rectified_x, rectified_y)
+    rospy.loginfo(ray)
+
 
 def point_2D_to_point_3D(x2D, y2D):
     global FIELD_WIDTH_ANGLE, FIELD_HEIGHT_ANGLE
@@ -386,6 +410,7 @@ def initialize_camera_params():
 
 if __name__ == '__main__':
     print("Launching lettuce detector...")
+    subscribe_to_camera_info()
     initialize_camera_params()
     rospy.init_node(NODE_NAME, anonymous=True)
     subscribe_to_transforms()
