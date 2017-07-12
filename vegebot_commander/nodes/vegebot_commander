@@ -13,6 +13,7 @@ from moveit_commander import MoveGroupCommander, PlanningSceneInterface, RobotCo
 import moveit_msgs.msg
 import geometry_msgs.msg
 from ur_msgs.srv import SetIO
+import tf
 
 from moveit_msgs.msg import RobotTrajectory
 from moveit_msgs.msg import Constraints, OrientationConstraint
@@ -66,6 +67,9 @@ URSCRIPT_DISTANCE_TO_GOAL = 0.02
 
 VELOCITY_SCALE = 0.75
 
+SHAKE_Y_OFFSET = 0.08
+SHAKE_CYCLES = 4
+
 Robot = 0
 Scene = 0
 Manipulator = 0
@@ -75,6 +79,9 @@ Last_action = None
 Current_reference_position = []
 Status_publisher = None
 Vegebot_arm = None
+
+TILT_ADJUST_ANGLE = 3.142 / 20.0
+DEFAULT_TILT = [3.14159, 3.14159, 3.14159]
 
 # MoveIt routines        
 
@@ -91,6 +98,8 @@ class ArmController():
         else:
             self.kinematics_controller = ArmKinematicsControllerMoveItAndURScript()
         self.movement_strategy = MovementStrategyWithMixedControl(self.kinematics_controller)
+        self.tilt_values = [0.0, 0.0, 0.0]
+        self.action_reset_tilt()
 
     def set_target_position(self, position):
         position = self.offset_end_effector_from_lettuce(position)
@@ -149,6 +158,37 @@ class ArmController():
             return (True, "Release succeeded.", "pregrasp")
         else:
             return (False, "Release FAILED.", "release")
+
+    def action_shake(self):
+        self.log("Shake my booty...")
+        if (self.movement_strategy.move_shake()):
+            return (True, "Shake succeeded.", "pregrasp")
+        else:
+            return (False, "Shake FAILED.", "release")
+
+    def action_reset_tilt(self):
+        self.log("RESET TILT")
+        self.tilt_values[0] = DEFAULT_TILT[0]
+        self.tilt_values[1] = DEFAULT_TILT[1]
+        self.tilt_values[2] = DEFAULT_TILT[2]
+        self.convert_tilt_to_quaternion()
+
+    def action_tilt(self, axis, direction):
+        self.log("TILT!")
+        if ((axis>=0) and (axis<=2)):
+            delta = direction * TILT_ADJUST_ANGLE
+            self.tilt_values[axis] = self.tilt_values[axis] + delta
+            self.log("Adjusted axis " + str(axis) + " by " + str(delta))
+        else:
+            self.log("Axis " + str(axis) + " out of range.")  
+        self.convert_tilt_to_quaternion()
+
+    def convert_tilt_to_quaternion(self):        
+        quaternion = tf.transformations.quaternion_from_euler(self.tilt_values[0], self.tilt_values[1], self.tilt_values[2])
+        self.log("--------------------------")
+        self.log(self.tilt_values)
+        self.log(quaternion)
+
 
     def action_full_pick_sequence(self):
         self.log("Executing full pick and place sequence...")
@@ -223,7 +263,17 @@ class MovementStrategy():
         return self.kinematics_controller.move_to(PLACE_POSITION, PLACE_ORIENTATION)
 
     def move_scan(self, position, orientation):
-        self.kinematics_controller.move_to(position, orientation)          
+        self.kinematics_controller.move_to(position, orientation)      
+
+    def move_shake(self):
+        current_position = self.kinematics_controller.getCurrentPosition();  
+        min_position = [current_position[0], current_position[1] - SHAKE_Y_OFFSET, current_position[2]]      
+        max_position = [current_position[0], current_position[1] + SHAKE_Y_OFFSET, current_position[2]] 
+        for i in range(1, SHAKE_CYCLES):
+            self.kinematics_controller.move_to(min_position, PICK_ORIENTATION)                 
+            self.kinematics_controller.move_to(max_position, PICK_ORIENTATION)  
+        return self.kinematics_controller.move_to(current_position, PICK_ORIENTATION)                      
+     
 
 class MovementStrategyDirect(MovementStrategy):
     pass
@@ -289,6 +339,14 @@ class ArmKinematicsControllerMoveIt():
 
     def arm_controller_move_to(self, position, orientation):
         return self.move_to(position, orientation)
+
+    def getCurrentPosition(self):
+        global Manipulator   
+        end_effector_link = Manipulator.get_end_effector_link()
+        current_pose = Manipulator.get_current_pose(end_effector_link)
+        ros_position = current_pose.pose.position
+        current_position = [ros_position.x, ros_position.y, ros_position.z]
+        return current_position        
 
     def move_to(self, position, orientation):
         global Manipulator
@@ -569,6 +627,26 @@ def euclidean_distance(point1, point2):
 def quaternion_to_axis_angle(orientation):
     # TODO: Last solution on https://math.stackexchange.com/questions/291110/numerically-stable-extraction-of-axis-angle-from-unit-quaternion
     return [0.0, 3.142, 0.0]
+    # TODO
+    rospy.loginfo("Quaternion x y z w")
+    rospy.loginfo(orientation)
+    qx = orientation[0]
+    qy = orientation[1]
+    qz = orientation[2]
+    qw = orientation[3]
+    sin_squared = qx*qx + qy*qy + qz*qz
+    if (sin_squared > 0.0):
+        sin_theta = math.sqrt(sin_squared)
+        k = 2.0 * math.atan2(sin_theta, qw) / sin_theta
+    else:
+        k = 2.0
+    angle_axis = [0.0, 0.0, 0.0]    
+    angle_axis[0] = qx * k
+    angle_axis[1] = qy * k
+    angle_axis[2] = qz * k
+    rospy.loginfo("Axis-angle")
+    rospy.loginfo(angle_axis)
+    return angle_axis
 
 
 #######################################################################################        
@@ -590,7 +668,8 @@ class BladeControllerUr10(BladeController):
         io_msg = SetIO()
         io_msg.fun = UR10_DIGITAL_SET_VOLTAGE
         io_msg.state = UR10_DIGITAL_IO_VOLTAGE    
-        service_proxy = rospy.ServiceProxy('/ur_driver/set_io', io_msg)
+        service_proxy = self.getServiceProxy()
+        #service_proxy = rospy.ServiceProxy('/ur_driver/set_io', io_msg)
         service_proxy(4, 8, 12)
 
     def blade_cut(self):
@@ -619,8 +698,19 @@ class BladeControllerUr10(BladeController):
         #io_msg.pin = UR10_BLADE_PIN
         io_msg.pin = pin
         io_msg.state = voltage_level    
-        service_proxy = rospy.ServiceProxy('/ur_driver/set_io', SetIO)
+        # rospy.loginfo("waiting for set_io service for blade...")
+        # rospy.wait_for_service('/ur_driver/set_io')
+        # rospy.loginfo('Service available!')
+        # service_proxy = rospy.ServiceProxy('/ur_driver/set_io', SetIO)
+        service_proxy = self.getServiceProxy()
         service_proxy(UR10_DIGITAL_IO_OUT, pin, voltage_level)
+
+    def getServiceProxy(self):
+        rospy.loginfo("waiting for set_io service for blade...")
+        rospy.wait_for_service('/ur_driver/set_io')
+        rospy.loginfo('Service available!')
+        service_proxy = rospy.ServiceProxy('/ur_driver/set_io', SetIO)
+        return service_proxy         
 
 
 
@@ -741,6 +831,12 @@ def callback(data):
         Vegebot_arm.action_place() 
     elif (command=='release'):
         Vegebot_arm.action_release() 
+    elif (command=='shake'):
+        Vegebot_arm.action_shake() 
+    elif (command=='reset_tilt'):
+        Vegebot_arm.action_reset_tilt() 
+    elif (command=='tilt'):
+        Vegebot_arm.action_tilt(int(params[1]), int(params[2])) 
 
 def set_up_snapshot_publisher():
     global Snapshot_publisher 

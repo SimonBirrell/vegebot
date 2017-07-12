@@ -1,0 +1,20 @@
+image_width: 640
+image_height: 480
+camera_name: overhead_camera
+camera_matrix:
+  rows: 3
+  cols: 3
+  data: [821.588675, 0.000000, 319.214555, 0.000000, 817.062296, 218.416676, 0.000000, 0.000000, 1.000000]
+distortion_model: plumb_bob
+distortion_coefficients:
+  rows: 1
+  cols: 5
+  data: [0.023368, 0.400983, -0.005088, 0.006455, 0.000000]
+rectification_matrix:
+  rows: 3
+  cols: 3
+  data: [1.000000, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000, 0.000000, 1.000000]
+projection_matrix:
+  rows: 3
+  cols: 4
+  data: [842.879761, 0.000000, 321.861126, 0.000000, 0.000000, 841.512268, 217.528221, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000]

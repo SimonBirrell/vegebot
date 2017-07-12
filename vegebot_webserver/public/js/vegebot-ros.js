@@ -146,6 +146,9 @@
 			if (previousLettuceHypothesis) {
 				// Updated lettuce
 				console.log("Updating lettuce ID " + lettuce_hypothesis_id);
+				previousLettuceHypothesis.pose.position.x = x;
+				previousLettuceHypothesis.pose.position.y = y;
+				previousLettuceHypothesis.pose.position.z = z;
 				//Lettuces[lettuce_hypothesis_id] = lettuceHypothesis;
 			} else {
 				// New lettuce

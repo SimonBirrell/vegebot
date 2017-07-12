@@ -98,4 +98,10 @@
         }
 
 
-        
+        .overlay {
+          stroke: red;
+        }
+
+        .active-overlay {
+          stroke: white;
+        }

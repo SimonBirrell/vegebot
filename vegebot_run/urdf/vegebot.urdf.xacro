@@ -411,7 +411,7 @@
   <joint name="end_effector_joint" type="fixed">
     <parent link="ee_link" />
     <child link = "camera_link" />
-    <origin xyz="${bucket_length} ${-bucket_radius - camera_offset_z} 0.0" rpy="0.0 0.0 0.0" />
+    <origin xyz="${bucket_length*1.3} ${-bucket_radius - camera_offset_z} 0.0" rpy="0.0 0.0 0.0" />
   </joint>
 
   <link name="bucket_link">
@@ -429,7 +429,7 @@
   <joint name="end_effector_bucket_joint" type="fixed">
     <parent link="ee_link" />
     <child link = "bucket_link" />
-    <origin xyz="${ee_bucket_offset_x} ${ee_bucket_offset_y} ${ee_bucket_offset_z}" rpy="0.0 1.5708 0.0" />
+    <origin xyz="${ee_bucket_offset_x*1.3} ${ee_bucket_offset_y} ${ee_bucket_offset_z}" rpy="0.0 1.5708 0.0" />
   </joint>
 
   <link name="pneumatic_link">

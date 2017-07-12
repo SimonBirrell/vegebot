@@ -20,7 +20,8 @@ LETTUCE_Z_OFFSET = LETTUCE_RADIUS
 
 LETTUCE_IMAGE_TOPIC_NAME = '/vegebot/lettuce_video/raw_images'
 LETTUCE_IMAGE_TEST_FILE = '/home/simonbirrell/catkin_ws/src/vegebot/lettuce_test/nodes/lettuce_test_'
-CAMERA_TOPIC_NAME = '/usb_cam/image_raw'
+#CAMERA_TOPIC_NAME = '/usb_cam/image_raw'
+CAMERA_TOPIC_NAME = '/camera1/usb_cam/image_raw'
 
 Lettuce_hypothesis_topic = 0
 Lettuce_images_raw_topic = None

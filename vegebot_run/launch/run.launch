@@ -3,10 +3,10 @@
 	<param name="vegebot/simulation" value="false" />
 	<param name="/move_group/trajectory_execution/allowed_start_tolerance" value="0.0" />
 
-
+<!--
 	<node pkg="vegebot_commander" name="vegebot_commander" type="vegebot_commander">
 	</node>
-
+-->
 	<node pkg="lettuce_test" name="test" type="test" output="screen">
 	</node>
 
@@ -44,10 +44,52 @@
 
 	<!-- USB Camera -->
 
-
+<!--
 	<include file="$(find usb_cam)/launch/usb_cam-test.launch">
 	</include>
+-->
+  <group ns="camera1">
 
+    <node name="usb_cam" pkg="usb_cam" type="usb_cam_node" output="screen" >
+      <param name="camera_name" value="overhead_camera"/>
+      <param name="camera_info_url" value="package://vegebot_run/config/overhead_camera.yaml" />      
+      <param name="video_device" value="/dev/video1" />
+      <param name="image_width" value="640" />
+      <param name="image_height" value="480" />
+      <param name="pixel_format" value="yuyv" />
+      <param name="camera_frame_id" value="usb_cam" />
+      <param name="io_method" value="mmap"/>
+    </node>
+    <!--
+    <node name="image_view" pkg="image_view" type="image_view" respawn="false" output="screen">
+      <remap from="image" to="/camera1/usb_cam/image_raw"/>
+      <param name="autosize" value="true" />
+    </node>
+	-->
+  </group>
+
+
+  <group ns="camera2">
+
+    <node name="usb_cam" pkg="usb_cam" type="usb_cam_node" output="screen" >
+      <param name="camera_name" value="hand_camera"/>
+      <param name="camera_info_url" value="package://vegebot_run/config/hand_camera.yaml" />      
+      <param name="video_device" value="/dev/video0" />
+      <param name="image_width" value="320" />
+      <param name="image_height" value="240" />
+      <param name="framerate" value="20" />
+      <param name="pixel_format" value="yuyv" />
+      <param name="camera_frame_id" value="usb_cam" />
+      <param name="io_method" value="mmap"/>
+    </node>
+    <!--
+    <node name="image_view" pkg="image_view" type="image_view" respawn="false" output="screen">
+      <remap from="image" to="/camera2/usb_cam/image_raw"/>
+      <param name="autosize" value="true" />
+    </node>
+-->
+
+  </group>
 <!--
 	<node pkg="image_view" name="raw_lettuce" type="image_view" args="image:=/vegebot/lettuce_video/raw_images" />
 -->	

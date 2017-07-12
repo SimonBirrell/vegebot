@@ -98,14 +98,22 @@
         console.log("doAction");
         console.log(id);
         console.log(command);
-        var confirmed = confirm("Confirm " + command);
-        if (confirmed) {
-          console.log("Clicked button " + command + ' ' + id);
-          var lettuceId = id.split('-').pop();
-          sendGenericCommand(lettuceId, command);
-        } else {
-          console.log("Not confirmed.");
-        }
+
+        // Don-t bbother with confirmation
+        var lettuceId = id.split('-').pop();
+        sendGenericCommand(lettuceId, command);
+
+        // Force confirmation
+        // var confirmed = confirm("Confirm " + command);
+        // if (confirmed) {
+        //   console.log("Clicked button " + command + ' ' + id);
+        //   var lettuceId = id.split('-').pop();
+        //   sendGenericCommand(lettuceId, command);
+        // } else {
+        //   console.log("Not confirmed.");
+        // }
+
+
       }      
 
       function pickLettuce(id) {
@@ -154,8 +162,8 @@
 <body onload="init()">
 	<div class='pure-g'>
 
-  <div class="pure-u-1-2" style="position:relative; display:inline-block;">
-    <div id="video"><img src="http://localhost:8080/stream?topic=/usb_cam/image_raw" style="position:absolute;"></img></div>
+  <div class="pure-u-1-3" style="position:relative; display:inline-block;">
+    <div id="video"><img src="http://localhost:8080/stream?topic=/camera1/usb_cam/image_raw" style="position:absolute;"></img></div>
     <svg id="video-overlay" style="position:absolute;left:0;top:0;" width="640" height="480">
       <rect x="0" y="0" width="100%" height="100%" fill="none" stroke="black" />
     </svg>
@@ -164,7 +172,13 @@
     <!--
     <div id='annotated' class='pure-u-1-4'><img src='http://localhost:8080/snapshot?topic=/vegebot/lettuce_hypotheses/annotated_images?width=400&height=250'></img></div>
     -->
-		<div id='urdf' class='pure-u-1-4'></div>
+		<div id='urdf' class='pure-u-1-3'></div>
+
+  <div class="pure-u-1-3" style="position:relative; display:inline-block;">
+    <div id="video2">
+      <img src="http://localhost:8080/stream?topic=/camera2/usb_cam/image_raw"></img>
+    </div>
+  </div>
 
 		<div class="pure-u-1-1">
 			<button onclick="sendVegebotCommand('park');" class="pure-button">Park</button>
@@ -174,6 +188,14 @@
       <button onclick="addLettuce();" class="pure-button">+ Lettuce</button>
       <button onclick="clearLettuces();" class="pure-button">Clear All</button>
       <button onclick="saveSample();" class="pure-button">Save Sample</button>
+      <button onclick="shakeItBaby();" class="pure-button">Shake</button>
+      <button onclick="resetTilt();" class="pure-button">Reset Tilt</button>
+      <button onclick="tilt(0,+1);" class="pure-button">t0+</button>
+      <button onclick="tilt(0,-1);" class="pure-button">t0-</button>
+      <button onclick="tilt(1,+1);" class="pure-button">t1+</button>
+      <button onclick="tilt(1,-1);" class="pure-button">t1-</button>
+      <button onclick="tilt(2,+1);" class="pure-button">t2+</button>
+      <button onclick="tilt(2,-1);" class="pure-button">t2-</button>
 		</div>
     <div class="pure-u-1-1 status">
       <span id="vegebot-status">&nbsp;</span>

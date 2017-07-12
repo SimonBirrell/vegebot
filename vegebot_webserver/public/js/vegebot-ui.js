@@ -74,6 +74,33 @@ function addUserLettuceAtXY(x, y, r) {
 	return lettuceHypothesis;
 }
 
+function publishLettuceHypothesisUpdate(lettuceHypothesis) {
+	var lettuceHypothesisId = lettuceHypothesis.lettuce_hypothesis_id,
+		lettuceHypothesisCopy = {
+			lettuce_hypothesis_id: lettuceHypothesisId,
+			label: "user_lettuce_" + lettuceHypothesisId,
+			camera_bb_x: lettuceHypothesis.camera_bb_x,
+			camera_bb_y: lettuceHypothesis.camera_bb_y,
+			camera_bb_width: lettuceHypothesis.camera_bb_width,
+			camera_bb_height: lettuceHypothesis.camera_bb_height,
+			probability: lettuceHypothesis.probability,
+			pose: {
+				orientation: {
+					w: 0.0,
+					x: 0.0,
+					y: 0.0,
+					z: 0.0
+				},
+				position: {
+					x: 0.0,
+					y: 0.0,
+					z: 0.0
+				}
+			}
+		};
+	window.lettuceUpdateFromViewport(lettuceHypothesisCopy);			
+}
+
 function  drawLettuceOverlays() {
 	var lettuceOverlays = d3.select('#video-overlay')
 		.selectAll('g') // circle
@@ -84,17 +111,45 @@ function  drawLettuceOverlays() {
 	var lettuceOverlaysEnter = lettuceOverlays
 		.enter()
 		.append('g')
+		.attr('class', 'overlay')
 		.attr('transform', function(d){
 			return "translate(" + d.camera_bb_x * 640 + "," + d.camera_bb_y * 480 + ")";
-		});
+		})
+		.call(d3.drag()
+        	.on("start", dragstarted)
+        	.on("drag", dragged)
+        	.on("end", dragended));
 
+		function dragstarted(d) {
+  			d3.select(this).raise().classed("active-overlay", true);
+		}
+
+		function dragged(d) {
+		  d3.select(this)
+		  	.attr("transform", function(d) {
+		  		var x = d3.event.x / 640.0,
+		  			y =	d3.event.y / 480.0;
+		  			console.log("x " + x.toString());
+		  			console.log("y " + y.toString());
+		  		d.camera_bb_x = x;
+		  		d.camera_bb_y = y;
+				return "translate(" + d3.event.x + "," + d3.event.y + ")";
+		  	});
+		  //publishLettuceHypothesisUpdate(d);
+		}
+
+		function dragended(d) {
+		  d3.select(this).classed("active-overlay", false);
+		  console.log(d);
+		  publishLettuceHypothesisUpdate(d);
+		};
 
 	lettuceOverlaysEnter
 		.append('circle')
 		.attr('r', function(d) {
 			return 640.0 * d.camera_bb_width / 2.0;
 		})
-		.attr('style', 'stroke:red;stroke-width:2;fill:none;');
+		.attr('style', 'stroke-width:2;fill:none;');
 
 	lettuceOverlaysEnter
 		.append('text')
@@ -105,13 +160,13 @@ function  drawLettuceOverlays() {
 		.attr('x', 0)
 		.attr('y', 20)
 		.attr('fill','red')
-		.attr('text-anchor', 'middle')
-		.call(d3.drag());
+		.attr('text-anchor', 'middle');
+
 
 	lettuceOverlaysEnter
 		.append('circle')
 		.attr('r','2')
-		.attr('style', 'stroke:red;stroke-width:2;fill:none;');
+		.attr('style', 'stroke-width:5;fill:none;');
 
 	lettuceOverlays
 		.exit()
@@ -221,15 +276,15 @@ function drawMenus(lettuceHypothesis) {
 		})
 		.text("X");	
 
-	menuItemsEnter.append('span')
-		.text(function(d) {
-			var pos = d.pose.position,
-				posLabel = ' 3D (' + pos.x.toFixed(2) + ', ' + pos.y.toFixed(2) + ', ' + 
-				pos.z.toFixed(2) + ') BB (' + 
-				d.camera_bb_x.toFixed(2) + ', ' + d.camera_bb_y.toFixed(2) + ', ' + 
-				d.camera_bb_width.toFixed(2) + ', ' + d.camera_bb_height.toFixed(2) + ')';
-			return 'Lettuce # ' + d.lettuce_hypothesis_id + posLabel;
-		});
+	menuItemsEnter.append('span');
+		// .text(function(d) {
+		// 	var pos = d.pose.position,
+		// 		posLabel = ' 3D (' + pos.x.toFixed(2) + ', ' + pos.y.toFixed(2) + ', ' + 
+		// 		pos.z.toFixed(2) + ') BB (' + 
+		// 		d.camera_bb_x.toFixed(2) + ', ' + d.camera_bb_y.toFixed(2) + ', ' + 
+		// 		d.camera_bb_width.toFixed(2) + ', ' + d.camera_bb_height.toFixed(2) + ')';
+		// 	return 'Lettuce # ' + d.lettuce_hypothesis_id + posLabel;
+		// });
 
 	var buttonId = 'button-pick-' + lettuceHypothesis.lettuce_hypothesis_id;
 
@@ -246,6 +301,17 @@ function drawMenus(lettuceHypothesis) {
 	// 		lettuceZeroY = d3.select('#ly0').attr("value", lettuceHypothesis.pose.position.y),
 	// 		lettuceZeroZ = d3.select('#lz0').attr("value", lettuceHypothesis.pose.position.z);
 	// }
+
+	menuItems
+		.select('span')
+		.text(function(d) {
+			var pos = d.pose.position,
+				posLabel = ' 3D (' + pos.x.toFixed(2) + ', ' + pos.y.toFixed(2) + ', ' + 
+				pos.z.toFixed(2) + ') BB (' + 
+				d.camera_bb_x.toFixed(2) + ', ' + d.camera_bb_y.toFixed(2) + ', ' + 
+				d.camera_bb_width.toFixed(2) + ', ' + d.camera_bb_height.toFixed(2) + ')';
+			return 'Lettuce # ' + d.lettuce_hypothesis_id + posLabel;
+		});
 
 	menuItems
 		.exit()
@@ -410,3 +476,23 @@ var saveSample = function() {
 	openStreamAndSaveSample();
 }
 window.saveSample = saveSample;
+
+var shakeItBaby = function() {
+	console.log("Shake your thang");
+	sendVegebotCommand('shake');
+}
+window.shakeItBaby = shakeItBaby;
+
+var resetTilt = function() {
+	console.log("Reset tilt.");
+	sendVegebotCommand('reset_tilt');
+}
+window.resetTilt = resetTilt;
+
+var tilt = function(axis, direction) {
+	var command = 'tilt ' + axis.toString() + ' ' + direction.toString();
+	console.log(command);
+	sendVegebotCommand(command);
+}
+window.tilt = tilt;
+
