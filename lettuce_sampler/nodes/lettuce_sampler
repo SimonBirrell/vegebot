@@ -16,7 +16,7 @@ Last_camera_image = None
 LettuceHypotheses = None
 OpenCVBridge = None
 
-CAMERA_TOPIC_NAME = '/usb_cam/image_raw'
+CAMERA_TOPIC_NAME = '/camera1/usb_cam/image_raw'
 DATASET_DIRECTORY = '/home/simonbirrell/dataset/'
 
 def set_up_lettuce_hypotheses_topic():
