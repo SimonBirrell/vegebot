@@ -8,6 +8,7 @@ import rospy
 import cv2
 import tf2_ros
 import tf2_geometry_msgs
+import numpy
 from std_msgs.msg import String, Bool
 from vegebot_msgs.msg import LettuceHypothesis
 from geometry_msgs.msg import Pose, Point, PointStamped
@@ -67,9 +68,12 @@ def subscribe_to_camera_info():
     rospy.Subscriber(LETTUCE_CAMERA_INFO_TOPIC_NAME, CameraInfo, receive_camera_info)
 
 def receive_camera_info(camera_info_message):
+    global Overhead_camera_model
+
     rospy.loginfo("Camera info received !!!!!")
     Overhead_camera_info = camera_info_message
-    Overhead_camera_model = PinholeCameraModel.fromCameraInfo(camera_info_message)    
+    Overhead_camera_model = PinholeCameraModel()
+    Overhead_camera_model.fromCameraInfo(camera_info_message)  
 
 def subscribe_to_lettuce_updates_from_viewport():
     global Lettuce_updates_from_viewport_topic
@@ -163,6 +167,17 @@ def get_camera_to_world_transform():
         return None
     return trans    
 
+def get_world_to_camera_transform():
+    if TfBuffer==None:
+        return None
+    try:
+        #trans = TfBuffer.lookup_transform('world', 'camera_link', rospy.Time())
+        trans = TfBuffer.lookup_transform('overhead_camera', 'world', rospy.Time())
+    except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
+        print("*** WARNING: Transform buffer in lettuce_detector not ready ***")
+        return None
+    return trans    
+
 
 ##################################################################################
 
@@ -250,8 +265,11 @@ class LettuceHypothesisComplete:
             self.lettuce_id = Last_lettuce_id
         else:
             self.lettuce_id = lettuce_id
-        self.calculate_3D_position()
-        #self.calculate_3D_position_from_model()
+        #self.calculate_3D_position()
+        self.calculate_3D_position_from_model()
+        rospy.loginfo("***************************")
+        rospy.loginfo("Got here!!!!!")
+        rospy.loginfo("***************************")
 
     def lettuce_id(self):
         return self.lettuce_id    
@@ -267,6 +285,12 @@ class LettuceHypothesisComplete:
 
     def h2D(self):
         return self.bounding_box[3]
+
+    def centre_of_bounding_box_x(self):
+        return self.x2D() + self.w2D() / 2.0  
+
+    def centre_of_bounding_box_y(self):
+        return self.y2D() + self.h2D() / 2.0  
 
     def label(self):
         return self.label
@@ -286,7 +310,53 @@ class LettuceHypothesisComplete:
         rospy.loginfo("calculate_3D_pos")
         #self.centre3D = point_2D_to_point_3D(self.x2D(), self.y2D())
         self.centre3D = point_2D_to_point_3D(self.centre_x, self.centre_y)
+        self.centre3D.point.z = self.centre3D.point.z + self.radius3D        
+
+
+        # print("Calculating 3D position")
+        self.centre_x = self.x2D() + self.w2D() / 2
+        self.centre_y = self.y2D() + self.h2D() / 2
+        self.radius3D = points2D_to_distance3D(self.x2D(), self.y2D(), 
+                                               self.x2D()+self.w2D(), 
+                                               self.y2D()+self.h2D()) / 2.0
+        rospy.loginfo("calculate_3D_pos")
+        #self.centre3D = point_2D_to_point_3D(self.x2D(), self.y2D())
+        self.centre3D = point_2D_to_point_3D(self.centre_x, self.centre_y)
         self.centre3D.point.z = self.centre3D.point.z + self.radius3D
+
+    def calculate_3D_position_from_model(self):
+        if not hasattr(self, 'lettuce_id'):
+            print("*** WARNING: LettuceHypothesis not properly created ****")             
+        # print("Calculating 3D position")
+
+        self.centre_x = self.centre_of_bounding_box_x()
+        self.centre_y = self.centre_of_bounding_box_y()
+        self.centre3D = point_2D_to_point_3D_using_camera_model(self.centre_x, self.centre_y)
+        # TODO> Make this real
+        self.radius3D = 0.08
+
+
+        # self.centre_x = self.x2D() + self.w2D() / 2
+        # self.centre_y = self.y2D() + self.h2D() / 2
+        # self.radius3D = points2D_to_distance3D(self.x2D(), self.y2D(), 
+        #                                        self.x2D()+self.w2D(), 
+        #                                        self.y2D()+self.h2D()) / 2.0
+        # rospy.loginfo("calculate_3D_pos")
+        # #self.centre3D = point_2D_to_point_3D(self.x2D(), self.y2D())
+        # self.centre3D = point_2D_to_point_3D(self.centre_x, self.centre_y)
+        # self.centre3D.point.z = self.centre3D.point.z + self.radius3D        
+
+
+        # # print("Calculating 3D position")
+        # self.centre_x = self.x2D() + self.w2D() / 2
+        # self.centre_y = self.y2D() + self.h2D() / 2
+        # self.radius3D = points2D_to_distance3D(self.x2D(), self.y2D(), 
+        #                                        self.x2D()+self.w2D(), 
+        #                                        self.y2D()+self.h2D()) / 2.0
+        # rospy.loginfo("calculate_3D_pos")
+        # #self.centre3D = point_2D_to_point_3D(self.x2D(), self.y2D())
+        # self.centre3D = point_2D_to_point_3D(self.centre_x, self.centre_y)
+        # self.centre3D.point.z = self.centre3D.point.z + self.radius3D
 
     def radius3D(self):
         return self.radius3D
@@ -324,12 +394,80 @@ class LettuceHypothesisComplete:
 def point_2D_to_point_3D_using_camera_model(x2D, y2D):
     global Overhead_camera_model
 
+    ray_in_camera_frame = unit_vector_to_target_in_camera_frame(x2D, y2D)
+    plane_points_camera_frame = ground_plane_points_in_camera_frame()
+    intersection_camera_frame = intersection_vector_and_plane(ray_in_camera_frame, plane_points_camera_frame)
+    intersection_world_frame = point_in_camera_frame_to_world_frame(intersection_camera_frame[0], intersection_camera_frame[1], intersection_camera_frame[2])
+    rospy.loginfo("Intersection in world frame")
+    rospy.loginfo(intersection_world_frame)
+    return intersection_world_frame
+
+def unit_vector_to_target_in_camera_frame(x2D, y2D):    
+    global Overhead_camera_model
+
     rospy.loginfo("Raw u,v")
-    rectified_x, rectified_y = Overhead_camera_model.rectifyPoint(x2D, y2D)
-    rospy.loginfo(rectified_x, rectified_y)
-    ray = Overhead_camera_model.projectPixelTo3dRay(rectified_x, rectified_y)
+    rospy.loginfo(x2D)
+    rospy.loginfo(y2D)
+    # TODO: Multiple camera frames
+    (rectified_x, rectified_y) = Overhead_camera_model.rectifyPoint((x2D, y2D))
+    rospy.loginfo("Rectified u, v")
+    rospy.loginfo(rectified_x)
+    rospy.loginfo(rectified_y)
+    ray = Overhead_camera_model.projectPixelTo3dRay((rectified_x, rectified_y))
+    # Transform from opencv coordinates to conventional camera coordinates
+
+    ros_ray = [ray[2], -ray[0], -ray[1]]
+    rospy.loginfo("ROS Ray")
     rospy.loginfo(ray)
 
+    return ros_ray
+
+def ground_plane_points_in_camera_frame():
+    point0_camera = point_in_world_frame_to_camera_frame(0.0, 0.0, 0.0)
+    point1_camera = point_in_world_frame_to_camera_frame(10.0, 10.0, 0.0)
+    point2_camera = point_in_world_frame_to_camera_frame(-10.0, 10.0, 0.0)
+    return [point0_camera, point1_camera, point2_camera]
+
+def intersection_vector_and_plane(vector, plane_stamped_points):
+    rospy.loginfo("intersection_vector_and_plane(vector, plane_stamped_points)")
+    rospy.loginfo("Vector")
+    rospy.loginfo(vector)
+    plane_points = [0.0, 0.0, 0.0]
+    plane_points[0] = plane_stamped_points[0].point
+    plane_points[1] = plane_stamped_points[1].point
+    plane_points[2] = plane_stamped_points[2].point
+    rospy.loginfo("plane_points")
+    rospy.loginfo(plane_points)
+
+    # xa, ya, za = end of vector. xb, yb, zb = origin
+    matrix = numpy.array([[vector[0], plane_points[1].x-plane_points[0].x, plane_points[2].x-plane_points[0].x],
+                          [vector[1], plane_points[1].y-plane_points[0].y, plane_points[2].y-plane_points[0].y],
+                          [vector[2], plane_points[1].z-plane_points[0].z, plane_points[2].z-plane_points[0].z]])
+    try:
+        inverse = numpy.linalg.inv(matrix)
+    except numpy.linalg.LinAlgError:
+        # Not invertible. Skip this one.
+        rospy.loginfo("**** ERROR ****: Couldnt invert matrix in intersection_vector_and_plane().") 
+        quit()   
+    matrix2 = numpy.array( [[vector[0] - plane_points[0].x],
+                            [vector[1] - plane_points[0].y],
+                            [vector[2] - plane_points[0].z]])
+    result = numpy.matmul(inverse, matrix2)
+    t = result[0]
+    intersection = vector * (1 - t)
+    rospy.loginfo("Intersection in camera frame")
+    rospy.loginfo(intersection)
+    return intersection
+
+def point_in_camera_frame_to_world_frame(x_camera, y_camera, z_camera):
+    transform = get_camera_to_world_transform()
+    point = transformed_point(x_camera, y_camera, z_camera, transform)
+    return point    
+
+def point_in_world_frame_to_camera_frame(x_world, y_world, z_world):
+    transform = get_world_to_camera_transform()
+    point = transformed_point(x_world, y_world, z_world, transform)
+    return point    
 
 def point_2D_to_point_3D(x2D, y2D):
     global FIELD_WIDTH_ANGLE, FIELD_HEIGHT_ANGLE

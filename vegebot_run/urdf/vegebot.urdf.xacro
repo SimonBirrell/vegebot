@@ -322,7 +322,8 @@
   <joint name="overhead_camera_body_to_overhead_camera_joint" type="fixed">
     <parent link="overhead_camera_body" />
     <child link = "overhead_camera" />
-    <origin xyz="0.0 0.0 0.0" rpy="${MPI + MPI/2.0} ${MPI} 0.0" />
+    <!--  <origin xyz="0.0 0.0 0.0" rpy="${MPI + MPI/2.0} ${MPI} 0.0" /> -->
+    <origin xyz="0.0 0.0 0.0" rpy="0.0 ${MPI} 0.0" />
   </joint>
 
 
