@@ -13,7 +13,10 @@
   <xacro:property name="floor_thickness" value="0.05" />
 
   <xacro:property name="platform_width" value="2.12" />
+  <!--
   <xacro:property name="platform_height" value="0.58" />
+-->
+  <xacro:property name="platform_height" value="0.90" />
   <xacro:property name="platform_length" value="0.32" />
   <xacro:property name="platform_depth" value="0.10" />
 
@@ -35,9 +38,15 @@
 
   <xacro:property name="bucket_length" value="0.29" />
   <xacro:property name="bucket_radius" value="0.14" />
+
+  <xacro:property name="ee_bucket_offset_x" value="0.0" />
+  <xacro:property name="ee_bucket_offset_y" value="0.0" />
+  <xacro:property name="ee_bucket_offset_z" value="0.0" />
+  <!--
   <xacro:property name="ee_bucket_offset_x" value="0.12" />
   <xacro:property name="ee_bucket_offset_y" value="-0.13" />
   <xacro:property name="ee_bucket_offset_z" value="0.0" />
+  -->
 
   <xacro:property name="pneumatic_width" value="0.22" />
   <xacro:property name="pneumatic_depth" value="0.06" />
