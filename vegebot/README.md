@@ -19,5 +19,9 @@ https://github.com/ros-planning/moveit/issues/86
 sudo pip uninstall pyassimp
 sudo pip install pyassimp
 
+3. MoveIt Position Controllers not found
+sudo apt-get install ros-kinetic-position-controllers
+sudo apt-get update
+sudo apt-get install ros-kinetic-ros-control ros-kinetic-ros-controllers
 
 
