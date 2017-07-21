@@ -7,6 +7,7 @@ project(vegebot_webserver)
 find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
+  web_video_server
 )
 
 ## System dependencies are found with CMake's conventions
