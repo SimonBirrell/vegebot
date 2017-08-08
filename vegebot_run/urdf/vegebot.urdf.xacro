@@ -6,6 +6,24 @@
   BIRL Laboratory, Engineering Dept., University of Cambridge
 -->
 
+  <!-- Lab or Platform -->
+  <xacro:property name="environment" value="lab" />
+  <!--
+  <xacro:property name="environment" value="platform" />
+  -->
+
+  <xacro:if value="${environment == 'lab'}">
+    <xacro:property name="arm_to_overhead_camera_support1" value="0.385" />
+    <xacro:property name="platform_height" value="0.90" />
+    <xacro:property name="rear_platform_to_overhead_camera_support1" value="${platform_height - rear_platform_height}" />
+  </xacro:if> 
+
+  <xacro:if value="${environment == 'platform'}">
+    <xacro:property name="arm_to_overhead_camera_support1" value="0.43" />
+    <xacro:property name="platform_height" value="0.58" />
+    <xacro:property name="rear_platform_to_overhead_camera_support1" value="0.0" />
+  </xacro:if> 
+
   <!-- Vegebot platform dimensions -->
 
   <xacro:property name="MPI" value="3.14159265359" />
@@ -14,9 +32,7 @@
 
   <xacro:property name="platform_width" value="2.12" />
   <!--
-  <xacro:property name="platform_height" value="0.58" />
 -->
-  <xacro:property name="platform_height" value="0.90" />
   <xacro:property name="platform_length" value="0.32" />
   <xacro:property name="platform_depth" value="0.10" />
 
@@ -80,11 +96,11 @@
   <xacro:property name="overhead_camera_support2_length" value="0.88" />
   <xacro:property name="overhead_camera_support2_width" value="0.045" />
   <xacro:property name="overhead_camera_support2_height" value="0.045" />
-  <xacro:property name="overhead_camera_length" value="0.06" />
-  <xacro:property name="overhead_camera_width" value="0.1" />
-  <xacro:property name="overhead_camera_height" value="0.045" />
+  <xacro:property name="overhead_camera_length" value="0.07" />
+  <xacro:property name="overhead_camera_width" value="0.01" />
+  <xacro:property name="overhead_camera_height" value="0.03" />
+  <xacro:property name="overhead_camera_offset" value="0.02" />
 
-  <xacro:property name="arm_to_overhead_camera_support1" value="0.43" />
 
 
   <xacro:macro name="wheel_assembly">
@@ -280,7 +296,7 @@
       <geometry>
         <box size="${overhead_camera_support1_length} ${overhead_camera_support1_width} ${overhead_camera_support1_height}" />
       </geometry>
-      <origin xyz="-0.6 0.0 0.0" />
+      <origin xyz="${-overhead_camera_support1_length / 2.0} 0.0 0.0" />
       <material name="gray">
          <color rgba="0.1 0.1 0.1 1" />
       </material>
@@ -289,7 +305,7 @@
   <joint name="platform_to_overhead_camera_support1_joint" type="fixed">
     <parent link="platform" />
     <child link = "overhead_camera_support1" />
-    <origin xyz="${-arm_to_overhead_camera_support1} 0.0 ${rear_platform_height}" rpy="0.0 ${MPI/2.0} 0.0" />
+    <origin xyz="${-arm_to_overhead_camera_support1} 0.0 ${rear_platform_height + rear_platform_to_overhead_camera_support1}" rpy="0.0 ${MPI/2.0} 0.0" />
   </joint>
 
   <link name="overhead_camera_support2">
@@ -312,7 +328,7 @@
   <link name="overhead_camera_body">
     <visual>
       <geometry>
-        <box size="${overhead_camera_length} ${overhead_camera_width} ${overhead_camera_height}" />
+        <box size="${overhead_camera_height} ${overhead_camera_length} ${overhead_camera_width}" />
       </geometry>
       <origin xyz="${-overhead_camera_length/2.0} 0.0 0.0" />
       <material name="red">
@@ -323,7 +339,7 @@
   <joint name="overhead_camera_support2_to_overhead_camera_body_joint" type="fixed">
     <parent link="overhead_camera_support2" />
     <child link = "overhead_camera_body" />
-    <origin xyz="${-overhead_camera_support2_length + (overhead_camera_height/2.0)} 0.0 ${overhead_camera_support2_height/2.0 + overhead_camera_height/2.0}" rpy="0.0 ${MPI/2.0} 0.0" />
+    <origin xyz="${-overhead_camera_support2_length + (overhead_camera_height/2.0)} ${overhead_camera_offset} ${overhead_camera_support2_height/2.0 + overhead_camera_width/2.0}" rpy="0.0 ${MPI/2.0} 0.0" />
   </joint>
 
   <link name="overhead_camera">
