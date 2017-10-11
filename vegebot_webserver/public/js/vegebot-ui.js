@@ -496,3 +496,9 @@ var tilt = function(axis, direction) {
 }
 window.tilt = tilt;
 
+var calibrate = function() {
+	var command = 'calibrate';
+	console.log(command);
+	sendVegebotCommand(command);
+}
+window.calibrate = calibrate;
