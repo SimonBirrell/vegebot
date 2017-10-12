@@ -87,9 +87,11 @@ DEFAULT_TILT = [3.14159, 3.14159, 3.14159]
 
 # MoveIt routines     
 
-CALIBRATION_POS_X = [0.69, 0.53, 0.42]
-CALIBRATION_POS_Y = [-0.14, -0.32, 0.12]
+CALIBRATION_POS_X = [0.8, 0.55, 0.3]
+CALIBRATION_POS_Y = [0.0, -0.3, 0.2]
 
+#CALIBRATION_POS_X = [1.0, 0.7, 0.4]
+#CALIBRATION_POS_Y = [-0.14, -0.7, -0.3]
 
 ############################# Arm Controller #####################################        
 
@@ -194,13 +196,17 @@ class ArmController():
         for i in range(0, 3):
             x = CALIBRATION_POS_X[i]
             y = CALIBRATION_POS_Y[i]
-            z = get_current_wrist_z()
+            z = self.movement_strategy.get_current_wrist_z()
             self.log("moving...")
             self.movement_strategy.move_calibration_pos(x, y, z)
             self.log("moved")
             (u, v) = get_aruco_position()
             calibration_records.append((x, y, z, u, v))
         (a, b) = get_calibration_factors(calibration_records)
+        self.log("Results:")
+        self.log(a)
+        self.log(b)
+        self.log(calibration_records)
         save_calibration_params(a, b, calibration_records)
 
     def convert_tilt_to_quaternion(self):        
@@ -297,6 +303,9 @@ class MovementStrategy():
     def log(self, message):
         rospy.loginfo(message)   
 
+    def get_current_wrist_z(self):
+        return self.kinematics_controller.get_current_wrist_z();
+
 
 class MovementStrategyDirect(MovementStrategy):
     pass
@@ -323,8 +332,8 @@ class MovementStrategyWithMixedControl(MovementStrategy):
 
     def move_calibration_pos(self, x, y, z):
         self.log("Attempting to calibrate at " + str(x) + " "+ str(y) + " "+ str(z))
-        return self.kinematics_controller.arm_controller_move_to([x, y, z], PICK_ORIENTATION)                              
-     
+        return self.kinematics_controller.arm_controller_move_to([x, y, z], PICK_ORIENTATION)    
+
 
 class MovementStrategyWithWaypoints(MovementStrategy):
 
@@ -615,7 +624,7 @@ class ArmKinematicsControllerMoveItAndURScript(ArmKinematicsControllerMoveIt):
 
     def wait_for_move_to_complete(self, position, orientation):
         end_effector_link = Manipulator.get_end_effector_link()
-        rospy.loginfo("EE Link = " + end_effector_link)
+        #rospy.loginfo("EE Link = " + end_effector_link)
         time_out = 30.0
         start_time = time.time()
         timeout_time = start_time + time_out
@@ -627,7 +636,7 @@ class ArmKinematicsControllerMoveItAndURScript(ArmKinematicsControllerMoveIt):
             # HORRENDOUS FUDGE FACTOR. DONT KNOW WHERE THIS NUMER COMES FROM
             current_position[2] -= 0.316727
             distance_to_goal = euclidean_distance(position, current_position)
-            rospy.loginfo(str(current_position) + " / " + str(position) + " -> " + str(distance_to_goal))
+            #rospy.loginfo(str(current_position) + " / " + str(position) + " -> " + str(distance_to_goal))
             if (distance_to_goal < URSCRIPT_DISTANCE_TO_GOAL):
                 rospy.loginfo("Movement completed")
                 return True
@@ -651,6 +660,15 @@ class ArmKinematicsControllerMoveItAndURScript(ArmKinematicsControllerMoveIt):
 
         rospy.loginfo(pose_string)
         return pose_string   
+    
+    def get_current_wrist_z(self):
+        end_effector_link = Manipulator.get_end_effector_link()
+        current_pose = Manipulator.get_current_pose(end_effector_link)
+        z = current_pose.pose.position.z
+        z -= 0.316727
+        rospy.loginfo("Wrist Z is " + str(z))
+        return z;
+
 
 def euclidean_distance(point1, point2):
     return math.sqrt((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2 + (point1[2] - point2[2])**2)         
@@ -759,9 +777,6 @@ def get_calibration_factors(records):
 
 def save_calibration_params(a, b, records):
     pass
-
-def get_current_wrist_z():
-    return 0.93282
 
 def publish_status_message(message):
         rospy.loginfo(message)
