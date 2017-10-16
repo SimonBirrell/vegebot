@@ -6,11 +6,12 @@ import math
 import random
 import rospy
 import cv2
+import cv2.aruco as aruco
 import tf2_ros
 import tf2_geometry_msgs
 import numpy
 from std_msgs.msg import String, Bool
-from vegebot_msgs.msg import LettuceHypothesis
+from vegebot_msgs.msg import LettuceHypothesis, MarkerCorners
 from geometry_msgs.msg import Pose, Point, PointStamped
 from sensor_msgs.msg import Image, CompressedImage, CameraInfo
 from cv_bridge import CvBridge, CvBridgeError
@@ -25,10 +26,12 @@ LETTUCE_Y_SPACING = 0.3
 LETTUCE_Z_OFFSET = LETTUCE_RADIUS
 
 LETTUCE_CAMERA_INFO_TOPIC_NAME = '/camera1/usb_cam/camera_info'
-LETTUCE_IMAGE_TOPIC_NAME = '/vegebot/lettuce_video/raw_images'
+#LETTUCE_IMAGE_TOPIC_NAME = '/vegebot/lettuce_video/raw_images'
+LETTUCE_IMAGE_TOPIC_NAME = '/camera1/usb_cam/image_raw'
 LETTUCE_HYPOTHESIS_TOPIC_NAME = '/vegebot/lettuce_hypotheses'
 LETTUCE_ANNOTATED_IMAGES_TOPIC_NAME = '/vegebot/lettuce_hypotheses/annotated_images'
 LETTUCE_UPDATES_FROM_VIEWPORT_TOPIC_NAME = '/vegebot/lettuce_hypotheses/updates_from_viewport'
+MARKER_CORNERS_TOPIC_NAME = '/vegebot/marker'
 
 LETTUCE_IMAGE_TEST_FILE = '/home/simonbirrell/catkin_ws/src/vegebot/lettuce_test/nodes/lettuce_test.jpg'
 LETTUCE_CASCADE_FILE = '/home/simonbirrell/catkin_ws/src/vegebot/lettuce_detect/cascade_data/cascade.xml' 
@@ -51,6 +54,7 @@ Lettuce_images_raw_topic = None
 Lettuce_images_annotated_topic = None
 Lettuce_cascade = None
 Lettuce_updates_from_viewport_topic = None
+Marker_corners_topic = None
 Overhead_camera_info = None
 Overhead_camera_model = None
 
@@ -110,26 +114,99 @@ def get_camera_params():
     rospy.loginfo(FIELD_PIXEL_WIDTH)
 
 def process_incoming_image(message):
+    cv2_image = image_message_to_cv2_image(message)
+    gray_cv2_image = cv2.cvtColor(cv2_image, cv2.COLOR_BGR2GRAY)
+
+    annotated_cv2_image = look_for_lettuces(cv2_image, gray_cv2_image)
+    annotated_cv2_image = look_for_aruco(gray_cv2_image, annotated_cv2_image)
+    rospy.loginfo("Lettuce detector has processed an image!")   
+    publish_annotated_image(annotated_cv2_image)
+
+def look_for_lettuces(cv2_image, gray_cv2_image):
     global FIELD_PIXEL_WIDTH, FIELD_PIXEL_HEIGHT, FIELD_WIDTH_ANGLE, FIELD_HEIGHT_ANGLE
     print("Received image for detection!")
     get_camera_params()
     rospy.loginfo("Now it-s")
     rospy.loginfo(FIELD_WIDTH_ANGLE)
-    image = message
-    cv2_image = image_message_to_cv2_image(image)
     height, width, channels = cv2_image.shape
     FIELD_PIXEL_WIDTH = width
     FIELD_PIXEL_HEIGHT = height
-    hypotheses = detect_lettuce_hypotheses_2D(cv2_image)
+    hypotheses = detect_lettuce_hypotheses_2D(gray_cv2_image)
     annotated_cv2_image = annotate_image(cv2_image, hypotheses)
-    publish_annotated_image(annotated_cv2_image)
     publish_camera_projection()
     for hypothesis in hypotheses:
+        # Renable next lines to publish hypothesis
         #lettuce_hypothesis_message = transform_2D_hypothesis_to_3D(hypothesis)
         #Lettuce_hypothesis_topic.publish(lettuce_hypothesis_message)
-        hypothesis.publish()
+        #hypothesis.publish()
         print("Publish lettuce hypothesis")
-    print("Lettuce detector has processed an image!")   
+    return annotated_cv2_image    
+
+def look_for_aruco(gray_cv2_image, annotated_cv2_image):
+    aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
+    parameters =  aruco.DetectorParameters_create()
+    corners, ids, rejectedImgPoints = aruco.detectMarkers(gray_cv2_image, aruco_dict, parameters=parameters)
+    centroid = get_marker_centroid(corners)
+    annotated_cv2_image = aruco.drawDetectedMarkers(annotated_cv2_image, corners)
+    annotated_cv2_image = draw_centroid(annotated_cv2_image, centroid)
+    publish_marker_corners(corners, centroid)
+    return annotated_cv2_image    
+
+def draw_centroid(annotated_cv2_image, centroid):
+    if (centroid != None):
+        radius = 4
+        colour = (0, 255, 0)
+        thickness = -4 # filled circle if negative
+        cv2.circle(annotated_cv2_image, centroid, radius, colour, thickness)
+    return annotated_cv2_image
+
+def get_marker_centroid(corners):
+    if (len(corners)>0):
+        corners = corners[0][0]
+        centroid = get_centroid_polygon([(corners[0][0], corners[0][1]), (corners[1][0], corners[1][1]), (corners[2][0], corners[2][1]), (corners[3][0], corners[3][1])])
+        return centroid
+    else:
+        return None
+
+def get_centroid_polygon(vertices):
+    x = 0
+    y = 0
+    n = len(vertices)
+    for vertex in vertices:
+        x = x + vertex[0]
+        y = y + vertex[1]
+    x = x / n
+    y = y / n    
+    return (int(x), int(y))      
+
+def set_up_marker_corners_topic():
+    global Marker_corners_topic
+    Marker_corners_topic = rospy.Publisher(MARKER_CORNERS_TOPIC_NAME,
+                           MarkerCorners,
+                           queue_size=10)
+    return Marker_corners_topic
+
+def publish_marker_corners(corners, centroid):
+    global Marker_corners_topic
+
+    marker_corners_message = MarkerCorners()
+    if (len(corners)>0):
+        marker_corners_message.detected = True
+        corners = corners[0][0]
+        marker_corners_message.x1 = corners[0][0]
+        marker_corners_message.y1 = corners[0][1]
+        marker_corners_message.x2 = corners[1][0]
+        marker_corners_message.y2 = corners[1][1]
+        marker_corners_message.x3 = corners[2][0]
+        marker_corners_message.y3 = corners[2][1]
+        marker_corners_message.x4 = corners[3][0]
+        marker_corners_message.y4 = corners[3][1]
+        marker_corners_message.cx = centroid[0]
+        marker_corners_message.cy = centroid[1]
+    else:
+        marker_corners_message.detected = False    
+    Marker_corners_topic.publish(marker_corners_message)    
+
 
 def set_up_lettuce_hypotheses_topic():
     global Lettuce_hypothesis_topic
@@ -196,11 +273,11 @@ def set_up_opencv():
 # label is a string: 'healthy' etc.
 # probability is a float from 0.0 to 1.0
 
-def detect_lettuce_hypotheses_2D(image):
+def detect_lettuce_hypotheses_2D(gray_cv2_image):
     global Lettuce_cascade
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    lettuces = Lettuce_cascade.detectMultiScale(gray, 1.3, 5, 
-                                                minSize=(150,150), maxSize=(250,250))
+    #gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    lettuces = Lettuce_cascade.detectMultiScale(gray_cv2_image, 1.3, 5, 
+                                                minSize=(60,60), maxSize=(250,250))
 
     lettuces = map(bounding_box_to_hypothesis, lettuces)
     # print("=================================")
@@ -242,7 +319,7 @@ def transform_2D_hypothesis_to_3D(hypothesis_2D):
     return None        
  
 def image_to_image_message(image):
-    return OpenCVBridge.cv2_to_imgmsg(image, "bgr8")
+    return OpenCVBridge.cv2_to_imgmsg(image, "rgb8")
 
 def image_message_to_cv2_image(image):
     return OpenCVBridge.imgmsg_to_cv2(image)
@@ -267,9 +344,6 @@ class LettuceHypothesisComplete:
             self.lettuce_id = lettuce_id
         #self.calculate_3D_position()
         self.calculate_3D_position_from_model()
-        rospy.loginfo("***************************")
-        rospy.loginfo("Got here!!!!!")
-        rospy.loginfo("***************************")
 
     def lettuce_id(self):
         return self.lettuce_id    
@@ -307,7 +381,7 @@ class LettuceHypothesisComplete:
         self.radius3D = points2D_to_distance3D(self.x2D(), self.y2D(), 
                                                self.x2D()+self.w2D(), 
                                                self.y2D()+self.h2D()) / 2.0
-        rospy.loginfo("calculate_3D_pos")
+        #rospy.loginfo("calculate_3D_pos")
         #self.centre3D = point_2D_to_point_3D(self.x2D(), self.y2D())
         self.centre3D = point_2D_to_point_3D(self.centre_x, self.centre_y)
         self.centre3D.point.z = self.centre3D.point.z + self.radius3D        
@@ -319,7 +393,7 @@ class LettuceHypothesisComplete:
         self.radius3D = points2D_to_distance3D(self.x2D(), self.y2D(), 
                                                self.x2D()+self.w2D(), 
                                                self.y2D()+self.h2D()) / 2.0
-        rospy.loginfo("calculate_3D_pos")
+        #rospy.loginfo("calculate_3D_pos")
         #self.centre3D = point_2D_to_point_3D(self.x2D(), self.y2D())
         self.centre3D = point_2D_to_point_3D(self.centre_x, self.centre_y)
         self.centre3D.point.z = self.centre3D.point.z + self.radius3D
@@ -398,27 +472,27 @@ def point_2D_to_point_3D_using_camera_model(x2D, y2D):
     plane_points_camera_frame = ground_plane_points_in_camera_frame()
     intersection_camera_frame = intersection_vector_and_plane(ray_in_camera_frame, plane_points_camera_frame)
     intersection_world_frame = point_in_camera_frame_to_world_frame(intersection_camera_frame[0], intersection_camera_frame[1], intersection_camera_frame[2])
-    rospy.loginfo("Intersection in world frame")
-    rospy.loginfo(intersection_world_frame)
+    #rospy.loginfo("Intersection in world frame")
+    #rospy.loginfo(intersection_world_frame)
     return intersection_world_frame
 
 def unit_vector_to_target_in_camera_frame(x2D, y2D):    
     global Overhead_camera_model
 
-    rospy.loginfo("Raw u,v")
-    rospy.loginfo(x2D)
-    rospy.loginfo(y2D)
+    # rospy.loginfo("Raw u,v")
+    # rospy.loginfo(x2D)
+    # rospy.loginfo(y2D)
     # TODO: Multiple camera frames
     (rectified_x, rectified_y) = Overhead_camera_model.rectifyPoint((x2D, y2D))
-    rospy.loginfo("Rectified u, v")
-    rospy.loginfo(rectified_x)
-    rospy.loginfo(rectified_y)
+    # rospy.loginfo("Rectified u, v")
+    # rospy.loginfo(rectified_x)
+    # rospy.loginfo(rectified_y)
     ray = Overhead_camera_model.projectPixelTo3dRay((rectified_x, rectified_y))
     # Transform from opencv coordinates to conventional camera coordinates
 
     ros_ray = [ray[2], -ray[0], -ray[1]]
-    rospy.loginfo("ROS Ray")
-    rospy.loginfo(ray)
+    # rospy.loginfo("ROS Ray")
+    # rospy.loginfo(ray)
 
     return ros_ray
 
@@ -429,15 +503,15 @@ def ground_plane_points_in_camera_frame():
     return [point0_camera, point1_camera, point2_camera]
 
 def intersection_vector_and_plane(vector, plane_stamped_points):
-    rospy.loginfo("intersection_vector_and_plane(vector, plane_stamped_points)")
-    rospy.loginfo("Vector")
-    rospy.loginfo(vector)
+    # rospy.loginfo("intersection_vector_and_plane(vector, plane_stamped_points)")
+    # rospy.loginfo("Vector")
+    # rospy.loginfo(vector)
     plane_points = [0.0, 0.0, 0.0]
     plane_points[0] = plane_stamped_points[0].point
     plane_points[1] = plane_stamped_points[1].point
     plane_points[2] = plane_stamped_points[2].point
-    rospy.loginfo("plane_points")
-    rospy.loginfo(plane_points)
+    # rospy.loginfo("plane_points")
+    # rospy.loginfo(plane_points)
 
     # xa, ya, za = end of vector. xb, yb, zb = origin
     matrix = numpy.array([[vector[0], plane_points[1].x-plane_points[0].x, plane_points[2].x-plane_points[0].x],
@@ -455,8 +529,8 @@ def intersection_vector_and_plane(vector, plane_stamped_points):
     result = numpy.matmul(inverse, matrix2)
     t = result[0]
     intersection = vector * (1 - t)
-    rospy.loginfo("Intersection in camera frame")
-    rospy.loginfo(intersection)
+    # rospy.loginfo("Intersection in camera frame")
+    # rospy.loginfo(intersection)
     return intersection
 
 def point_in_camera_frame_to_world_frame(x_camera, y_camera, z_camera):
@@ -475,13 +549,13 @@ def point_2D_to_point_3D(x2D, y2D):
     x = x2D
     y = y2D
 
-    rospy.loginfo("$===========")
-    rospy.loginfo(x2D)
-    rospy.loginfo(y2D)
-    rospy.loginfo("$===========")
-    rospy.loginfo("Field widths:")
-    rospy.loginfo(FIELD_WIDTH_ANGLE)
-    rospy.loginfo(FIELD_HEIGHT_ANGLE)
+    # rospy.loginfo("$===========")
+    # rospy.loginfo(x2D)
+    # rospy.loginfo(y2D)
+    # rospy.loginfo("$===========")
+    # rospy.loginfo("Field widths:")
+    # rospy.loginfo(FIELD_WIDTH_ANGLE)
+    # rospy.loginfo(FIELD_HEIGHT_ANGLE)
 
     camera_transform = get_camera_to_world_transform()
     distance_to_floor = camera_transform.transform.translation.z
@@ -502,9 +576,9 @@ def point_2D_to_point_3D(x2D, y2D):
 
 def camera_field_polygon_in_world():
     global FIELD_WIDTH_ANGLE, FIELD_HEIGHT_ANGLE
-    rospy.loginfo("$$$$$$$$$$$$$$$$$$")
-    rospy.loginfo(FIELD_WIDTH_ANGLE)
-    rospy.loginfo("$$$$$$$$$$$$$$$$$$")
+    # rospy.loginfo("$$$$$$$$$$$$$$$$$$")
+    # rospy.loginfo(FIELD_WIDTH_ANGLE)
+    # rospy.loginfo("$$$$$$$$$$$$$$$$$$")
     
     camera_transform = get_camera_to_world_transform()
     distance_to_floor = 0 - camera_transform.transform.translation.z
@@ -555,6 +629,7 @@ if __name__ == '__main__':
     set_up_opencv()
     set_up_lettuce_hypotheses_topic()
     set_up_lettuce_images_annotated_topic()
+    set_up_marker_corners_topic()
     subscribe_to_lettuce_images_raw_topic(process_incoming_image)
     subscribe_to_lettuce_updates_from_viewport()
 

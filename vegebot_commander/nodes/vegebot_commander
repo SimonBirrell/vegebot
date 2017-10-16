@@ -14,6 +14,7 @@ import moveit_msgs.msg
 import geometry_msgs.msg
 from ur_msgs.srv import SetIO
 import tf
+from vegebot_msgs.msg import MarkerCorners 
 
 from moveit_msgs.msg import RobotTrajectory
 from moveit_msgs.msg import Constraints, OrientationConstraint
@@ -27,6 +28,8 @@ BUCKET_CENTRE_OFFSET = 0.0
 
 VEGEBOT_SIMULATION_PARAM = "/vegebot/simulation"
 VEGEBOT_STATUS_TOPIC = "/vegebot/status"
+MARKER_CORNERS_TOPIC_NAME = '/vegebot/marker'
+
 IS_A_SIMULATION = False
 DISABLE_MOVEMENT = False
 DISABLE_IO = False 
@@ -87,8 +90,11 @@ DEFAULT_TILT = [3.14159, 3.14159, 3.14159]
 
 # MoveIt routines     
 
-CALIBRATION_POS_X = [0.8, 0.55, 0.3]
-CALIBRATION_POS_Y = [0.0, -0.3, 0.2]
+CALIBRATION_POS_X = [0.8, 0.55, 0.35]
+CALIBRATION_POS_Y = [0.0, -0.3, 0.1]
+
+Marker_centre_valid = False
+Marker_centre = (0, 0)
 
 #CALIBRATION_POS_X = [1.0, 0.7, 0.4]
 #CALIBRATION_POS_Y = [-0.14, -0.7, -0.3]
@@ -200,6 +206,7 @@ class ArmController():
             self.log("moving...")
             self.movement_strategy.move_calibration_pos(x, y, z)
             self.log("moved")
+            rospy.sleep(2)
             (u, v) = get_aruco_position()
             calibration_records.append((x, y, z, u, v))
         (a, b) = get_calibration_factors(calibration_records)
@@ -848,8 +855,24 @@ def set_defaults():
 def set_up_ros_node():         
     rospy.init_node('vegebot_commander', anonymous=True)
     
+def set_up_marker_listener():
+    print("== Setting up marker listener...")
+    rospy.Subscriber(MARKER_CORNERS_TOPIC_NAME, MarkerCorners, marker_received)
+
+def marker_received(message):
+    global Marker_centre_valid, Marker_centre
+
+    if (message.detected):
+      Marker_centre = (message.cx, message.cy)
+      #print("Received marker with centroid " + str(Marker_centre))
+      Marker_centre_valid = True
+      #print('*********************************************************************')   
+    else:
+      Marker_centre_valid = False
+      #print("No marker visible")   
+
 def set_up_command_listener():
-    print("== Setting up listener...")
+    print("== Setting up command listener...")
     # In ROS, nodes are uniquely named. If two nodes with the same
     # node are launched, the previous one is kicked off. The
     # anonymous=True flag means that rospy will choose a unique
@@ -857,9 +880,9 @@ def set_up_command_listener():
     # run simultaneously.
     #rospy.init_node('vegebot_commander', anonymous=True)
     #prepare_snapshot_publisher()
-    rospy.Subscriber("vegebot_commands", String, callback)
+    rospy.Subscriber("vegebot_commands", String, command_received)
 
-def callback(data):
+def command_received(data):
     print
     rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
     params = data.data.split()
@@ -930,6 +953,7 @@ if __name__ == '__main__':
     set_up_status_topic()
     set_up_snapshot_publisher()
     set_up_command_listener()
+    set_up_marker_listener()
 
     rospy.spin()
 
