@@ -11,7 +11,7 @@ import tf2_ros
 import tf2_geometry_msgs
 import numpy
 from std_msgs.msg import String, Bool
-from vegebot_msgs.msg import LettuceHypothesis, MarkerCorners
+from vegebot_msgs.msg import LettuceHypothesis, MarkerCorners, CalibrationRecords
 from geometry_msgs.msg import Pose, Point, PointStamped
 from sensor_msgs.msg import Image, CompressedImage, CameraInfo
 from cv_bridge import CvBridge, CvBridgeError
@@ -32,6 +32,7 @@ LETTUCE_HYPOTHESIS_TOPIC_NAME = '/vegebot/lettuce_hypotheses'
 LETTUCE_ANNOTATED_IMAGES_TOPIC_NAME = '/vegebot/lettuce_hypotheses/annotated_images'
 LETTUCE_UPDATES_FROM_VIEWPORT_TOPIC_NAME = '/vegebot/lettuce_hypotheses/updates_from_viewport'
 MARKER_CORNERS_TOPIC_NAME = '/vegebot/marker'
+CALIBRATION_RECORDS_TOPIC_NAME = '/vegebot/calibration'
 
 LETTUCE_IMAGE_TEST_FILE = '/home/simonbirrell/catkin_ws/src/vegebot/lettuce_test/nodes/lettuce_test.jpg'
 LETTUCE_CASCADE_FILE = '/home/simonbirrell/catkin_ws/src/vegebot/lettuce_detect/cascade_data/cascade.xml' 
@@ -65,11 +66,27 @@ OpenCVBridge = 0
 
 TfBuffer = None
 
+Latest_calibration_records = None
+USE_CALIBRATION_RECORDS = True
+ARUCO_OFFSET_X = 0.26
+ARUCO_OFFSET_Y = 0.10
+
 ########################### ROS Stuff ############################################
 
 def subscribe_to_camera_info():
     rospy.loginfo("Subscribing to camera info")
     rospy.Subscriber(LETTUCE_CAMERA_INFO_TOPIC_NAME, CameraInfo, receive_camera_info)
+
+def set_up_calibration_records_topic():
+    rospy.loginfo("Subscribing to vegebot calibration records")
+    rospy.Subscriber(CALIBRATION_RECORDS_TOPIC_NAME, CalibrationRecords, receive_calibration_records)
+
+def receive_calibration_records(message):
+    global Latest_calibration_records
+    rospy.loginfo("-------- Received calibration records ---------")
+    Latest_calibration_records = message
+    rospy.loginfo(message)
+    rospy.loginfo("-----------------------------------------------")
 
 def receive_camera_info(camera_info_message):
     global Overhead_camera_model
@@ -110,8 +127,8 @@ def get_camera_params():
     global FIELD_WIDTH_ANGLE, FIELD_HEIGHT_ANGLE, FIELD_WIDTH_ANGLE_PARAM, FIELD_HEIGHT_ANGLE_PARAM
     FIELD_WIDTH_ANGLE = rospy.get_param(FIELD_WIDTH_ANGLE_PARAM)    
     FIELD_HEIGHT_ANGLE = rospy.get_param(FIELD_HEIGHT_ANGLE_PARAM)    
-    rospy.loginfo("Read PARAM")
-    rospy.loginfo(FIELD_PIXEL_WIDTH)
+    #rospy.loginfo("Read PARAM")
+    #rospy.loginfo(FIELD_PIXEL_WIDTH)
 
 def process_incoming_image(message):
     cv2_image = image_message_to_cv2_image(message)
@@ -124,10 +141,10 @@ def process_incoming_image(message):
 
 def look_for_lettuces(cv2_image, gray_cv2_image):
     global FIELD_PIXEL_WIDTH, FIELD_PIXEL_HEIGHT, FIELD_WIDTH_ANGLE, FIELD_HEIGHT_ANGLE
-    print("Received image for detection!")
+    #print("Received image for detection!")
     get_camera_params()
-    rospy.loginfo("Now it-s")
-    rospy.loginfo(FIELD_WIDTH_ANGLE)
+    #rospy.loginfo("Now it-s")
+    #rospy.loginfo(FIELD_WIDTH_ANGLE)
     height, width, channels = cv2_image.shape
     FIELD_PIXEL_WIDTH = width
     FIELD_PIXEL_HEIGHT = height
@@ -343,6 +360,9 @@ class LettuceHypothesisComplete:
         else:
             self.lettuce_id = lettuce_id
         #self.calculate_3D_position()
+        if ((USE_CALIBRATION_RECORDS) and (Latest_calibration_records!=None)):
+            self.calculate_3D_position_from_calibration_plane(Latest_calibration_records)
+            return
         self.calculate_3D_position_from_model()
 
     def lettuce_id(self):
@@ -431,6 +451,74 @@ class LettuceHypothesisComplete:
         # #self.centre3D = point_2D_to_point_3D(self.x2D(), self.y2D())
         # self.centre3D = point_2D_to_point_3D(self.centre_x, self.centre_y)
         # self.centre3D.point.z = self.centre3D.point.z + self.radius3D
+
+    def calculate_3D_position_from_calibration_plane(self, records):
+        rospy.loginfo("Using calibration plane")
+        self.centre_x = self.centre_of_bounding_box_x()
+        self.centre_y = self.centre_of_bounding_box_y()
+        (x,y,z) = self.convert_2D_to_3D_in_calibration_plane(records, self.centre_x, self.centre_y)
+        point = PointStamped()
+        point.header.stamp = rospy.Time.now()
+        point.header.frame_id = 'camera_link'
+        point.point.x = x
+        point.point.y = y 
+        point.point.z = z
+        rospy.loginfo("------------------------")
+        rospy.loginfo(x)
+        rospy.loginfo(y)
+        rospy.loginfo(z)
+        rospy.loginfo("------------------------")
+        self.centre3D = point
+        self.radius3D = 0.08
+
+    def convert_2D_to_3D_in_calibration_plane(self, records, ut, vt):
+        #rospy.loginfo("*****************************")
+        #rospy.loginfo(records)
+        #rospy.loginfo("*****************************")
+        x0 = records.x0
+        y0 = records.y0
+        z0 = records.z0
+        u0 = records.u0
+        v0 = records.v0
+
+        x1 = records.x1
+        y1 = records.y1
+        z1 = records.z1
+        u1 = records.u1
+        v1 = records.v1
+
+        x2 = records.x2
+        y2 = records.y2
+        z2 = records.z2
+        u2 = records.u2
+        v2 = records.v2
+        # Now transform u1,v1 and u2,v2 to be wrt to u0,v0 i.e. vectors from u0,v0
+        uu1 = u1 - u0
+        vv1 = v1 - v0
+        uu2 = u2 - u0
+        vv2 = v2 - v0
+        # Target wrt u0,v0
+        uut = ut - u0
+        vvt = vt - v0
+        # Now get a, b scaling factors where
+        # a[uu1, vv1]T + b[uu2, vv2]T = [uut, vvt]T
+        b = (vvt-(uut/uu1)*vv1) / (vv2 - (uu2/uu1)*vv1)
+        a = (uut-b*uu2) / uu1
+        # Now get equivalent 3D vectors wrt x0,y0,z0
+        xx1 = x1 - x0
+        yy1 = y1 - y0
+        zz1 = z1 - z0
+        xx2 = x2 - x0
+        yy2 = y2 - y0
+        zz2 = z2 - z0
+        # multiply by scaling factors
+        xt = a * xx1 + b * xx2 + x0
+        yt = a * yy1 + b * yy2 + y0
+        zt = a * zz1 + b * zz2 + z0
+        # Offset of Aruco Code from centre
+        xt += ARUCO_OFFSET_X
+        yt += ARUCO_OFFSET_Y
+        return (xt, yt, zt)
 
     def radius3D(self):
         return self.radius3D
@@ -630,6 +718,7 @@ if __name__ == '__main__':
     set_up_lettuce_hypotheses_topic()
     set_up_lettuce_images_annotated_topic()
     set_up_marker_corners_topic()
+    set_up_calibration_records_topic()
     subscribe_to_lettuce_images_raw_topic(process_incoming_image)
     subscribe_to_lettuce_updates_from_viewport()
 

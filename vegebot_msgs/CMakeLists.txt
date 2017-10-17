@@ -12,6 +12,7 @@ add_message_files(
    FILES
    LettuceHypothesis.msg
    MarkerCorners.msg
+   CalibrationRecords.msg
 )
 
 ## Generate services in the 'srv' folder

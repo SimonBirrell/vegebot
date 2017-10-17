@@ -453,6 +453,7 @@ function changeLettuceZeroCoordinates(e) {
 }
 
 var addLettuce = function() {
+	console.log("addLettuce");
 	LettucePlacingMode = true;
 }
 window.addLettuce = addLettuce;

@@ -14,7 +14,7 @@ import moveit_msgs.msg
 import geometry_msgs.msg
 from ur_msgs.srv import SetIO
 import tf
-from vegebot_msgs.msg import MarkerCorners 
+from vegebot_msgs.msg import MarkerCorners, CalibrationRecords 
 
 from moveit_msgs.msg import RobotTrajectory
 from moveit_msgs.msg import Constraints, OrientationConstraint
@@ -29,6 +29,7 @@ BUCKET_CENTRE_OFFSET = 0.0
 VEGEBOT_SIMULATION_PARAM = "/vegebot/simulation"
 VEGEBOT_STATUS_TOPIC = "/vegebot/status"
 MARKER_CORNERS_TOPIC_NAME = '/vegebot/marker'
+CALIBRATION_RECORDS_TOPIC_NAME = '/vegebot/calibration'
 
 IS_A_SIMULATION = False
 DISABLE_MOVEMENT = False
@@ -84,14 +85,18 @@ Last_action = None
 Current_reference_position = []
 Status_publisher = None
 Vegebot_arm = None
+Vegebot_calibration_topic = None
 
 TILT_ADJUST_ANGLE = 3.142 / 20.0
 DEFAULT_TILT = [3.14159, 3.14159, 3.14159]
 
 # MoveIt routines     
 
-CALIBRATION_POS_X = [0.8, 0.55, 0.35]
-CALIBRATION_POS_Y = [0.0, -0.3, 0.1]
+CALIBRATION_POS_X = [0.65, 0.65, 0.4]
+CALIBRATION_POS_Y = [0.3, -0.55, -0.1]
+
+#CALIBRATION_POS_X = [0.65, 0.55, 0.55]
+#CALIBRATION_POS_Y = [0.0, -0.3, 0.1]
 
 Marker_centre_valid = False
 Marker_centre = (0, 0)
@@ -207,15 +212,17 @@ class ArmController():
             self.movement_strategy.move_calibration_pos(x, y, z)
             self.log("moved")
             rospy.sleep(2)
-            (u, v) = get_aruco_position()
+            aruco_position = get_aruco_position()
+            if (aruco_position==None):
+                "Aborting calibration..."
+                return
+            (u, v) = aruco_position
             calibration_records.append((x, y, z, u, v))
-        (a, b) = get_calibration_factors(calibration_records)
         self.log("Results:")
-        self.log(a)
-        self.log(b)
         self.log(calibration_records)
-        save_calibration_params(a, b, calibration_records)
+        publish_calibration_params(calibration_records)
 
+    
     def convert_tilt_to_quaternion(self):        
         quaternion = tf.transformations.quaternion_from_euler(self.tilt_values[0], self.tilt_values[1], self.tilt_values[2])
         self.log("--------------------------")
@@ -264,6 +271,62 @@ class ArmController():
 
 
 #######################################################################################        
+
+######################## CALIBRATION #############################################
+
+def set_up_marker_listener():
+    print("== Setting up marker listener...")
+    rospy.Subscriber(MARKER_CORNERS_TOPIC_NAME, MarkerCorners, marker_received)
+
+def marker_received(message):
+    global Marker_centre_valid, Marker_centre
+
+    if (message.detected):
+      Marker_centre = (message.cx, message.cy)
+      #print("Received marker with centroid " + str(Marker_centre))
+      Marker_centre_valid = True
+      #print('*********************************************************************')   
+    else:
+      Marker_centre_valid = False
+      #print("No marker visible")   
+
+def get_aruco_position():
+    if (Marker_centre_valid):
+        return Marker_centre
+    else:
+        rospy.info('CALIBRATION ERROR: MARKER NOT DETECTED')  
+        return None  
+
+def publish_calibration_params(records):
+    m = CalibrationRecords()
+    m.x0 = records[0][0]
+    m.y0 = records[0][1]
+    m.z0 = records[0][2]
+    m.u0 = records[0][3]
+    m.v0 = records[0][4]
+    m.x1 = records[1][0]
+    m.y1 = records[1][1]
+    m.z1 = records[1][2]
+    m.u1 = records[1][3]
+    m.v1 = records[1][4]
+    m.x2 = records[2][0]
+    m.y2 = records[2][1]
+    m.z2 = records[2][2]
+    m.u2 = records[2][3]
+    m.v2 = records[2][4]
+    Vegebot_calibration_topic.publish(m)
+    rospy.loginfo("CALIBRATION PUBLISHED")
+
+def set_up_calibration_publisher():
+    global Vegebot_calibration_topic
+    Vegebot_calibration_topic = rospy.Publisher(CALIBRATION_RECORDS_TOPIC_NAME,
+                                                CalibrationRecords,
+                                                queue_size=10)
+    return Vegebot_calibration_topic
+
+
+####################################################################################
+
 
 class MovementStrategy():
     def __init__(self, kinematics_controller):
@@ -776,15 +839,6 @@ class BladeControllerUr10(BladeController):
 
 #######################################################################################
 
-def get_aruco_position():
-    return 0, 0
-
-def get_calibration_factors(records):
-    return 0, 0
-
-def save_calibration_params(a, b, records):
-    pass
-
 def publish_status_message(message):
         rospy.loginfo(message)
         Status_publisher.publish(message)
@@ -854,22 +908,7 @@ def set_defaults():
 
 def set_up_ros_node():         
     rospy.init_node('vegebot_commander', anonymous=True)
-    
-def set_up_marker_listener():
-    print("== Setting up marker listener...")
-    rospy.Subscriber(MARKER_CORNERS_TOPIC_NAME, MarkerCorners, marker_received)
 
-def marker_received(message):
-    global Marker_centre_valid, Marker_centre
-
-    if (message.detected):
-      Marker_centre = (message.cx, message.cy)
-      #print("Received marker with centroid " + str(Marker_centre))
-      Marker_centre_valid = True
-      #print('*********************************************************************')   
-    else:
-      Marker_centre_valid = False
-      #print("No marker visible")   
 
 def set_up_command_listener():
     print("== Setting up command listener...")
@@ -953,6 +992,7 @@ if __name__ == '__main__':
     set_up_status_topic()
     set_up_snapshot_publisher()
     set_up_command_listener()
+    set_up_calibration_publisher()
     set_up_marker_listener()
 
     rospy.spin()
