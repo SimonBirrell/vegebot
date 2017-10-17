@@ -37,12 +37,16 @@ DISABLE_IO = False
 CARTESIAN_APPROACH = True
 
 PICK_POSITION = [ 1.0, 0.0, 0.5]
-PICK_ORIENTATION= [ 0.5, -0.5, -0.5, -0.5]
+#PICK_ORIENTATION= [ 0.5, -0.5, -0.5, -0.5]
+PICK_ORIENTATION = [ 0.0, 0.707106781, 0.0, 0.707106781]
 
 PARK_POSITION = [ 0.38309, -0.39763, 0.93282]
 PARK_ORIENTATION = [ 0.0, 0.707106781, 0.0, 0.707106781]
 
-PLACE_POSITION = [ -0.2, -0.7, 0.93282]
+#PLACE_POSITION = [ -0.2, -0.7, 1.2]
+#PLACE_ORIENTATION = [ 0.0, 0.707106781, 0.0, 0.707106781]
+PREPLACE_POSITION = [ 0.5, 0.5, 1.2]
+PLACE_POSITION = [ 0.0, 0.5, 1.2]
 PLACE_ORIENTATION = [ 0.0, 0.707106781, 0.0, 0.707106781]
 
 SCAN_POSITION = [ 0.9, 0.0, 0.8]
@@ -52,8 +56,8 @@ SCAN_POSITION_PARAM = '/vegebot/scan_position'
 #END_EFFECTOR_TO_LETTUCE_Z = 0.095
 END_EFFECTOR_TO_LETTUCE_Z = 0.0
 
-
-PREGRASP_OFFSET = [0.0, 0.0, 0.7]
+#PREGRASP_OFFSET = [0.0, 0.0, 0.7]
+PREGRASP_OFFSET = [0.0, 0.0, 0.3]
 
 TARGET_END_EFFECTOR_OFFSET = [0.0, 0.0, END_EFFECTOR_TO_LETTUCE_Z]
 
@@ -92,8 +96,10 @@ DEFAULT_TILT = [3.14159, 3.14159, 3.14159]
 
 # MoveIt routines     
 
-CALIBRATION_POS_X = [0.65, 0.65, 0.4]
+CALIBRATION_POS_X = [0.6, 0.55, 0.4]
+#CALIBRATION_POS_X = [0.65, 0.65, 0.4]
 CALIBRATION_POS_Y = [0.3, -0.55, -0.1]
+CALIBRATION_NEUTRAL = [0.4, 0.3]
 
 #CALIBRATION_POS_X = [0.65, 0.55, 0.55]
 #CALIBRATION_POS_Y = [0.0, -0.3, 0.1]
@@ -165,7 +171,14 @@ class ArmController():
 
     def action_place(self):
         self.log("Executing place...")
-        if (self.movement_strategy.move_place()):
+        #if (self.movement_strategy.move_place()):
+        #    return (True, "Place succeeded.", "release")
+        #else:
+        #    return (False, "Place FAILED.", "place")
+        (x, y, z) = self.movement_strategy.get_current_wrist()
+        y += 0.3
+        rospy.loginfo("PLACING")
+        if (self.movement_strategy.move_to_x([x, y, z])):
             return (True, "Place succeeded.", "release")
         else:
             return (False, "Place FAILED.", "place")
@@ -221,7 +234,7 @@ class ArmController():
         self.log("Results:")
         self.log(calibration_records)
         publish_calibration_params(calibration_records)
-
+        self.movement_strategy.move_calibration_pos(CALIBRATION_NEUTRAL[0], CALIBRATION_NEUTRAL[1], z)
     
     def convert_tilt_to_quaternion(self):        
         quaternion = tf.transformations.quaternion_from_euler(self.tilt_values[0], self.tilt_values[1], self.tilt_values[2])
@@ -356,7 +369,9 @@ class MovementStrategy():
             return self.kinematics_controller.move_to(pregrasp_position, PICK_ORIENTATION)
 
     def move_place(self):
-        return self.kinematics_controller.move_to(PLACE_POSITION, PLACE_ORIENTATION)
+        if self.kinematics_controller.move_to(PREPLACE_POSITION, PLACE_ORIENTATION):
+            return self.kinematics_controller.move_to(PLACE_POSITION, PLACE_ORIENTATION)
+        return False    
 
     def move_scan(self, position, orientation):
         self.kinematics_controller.move_to(position, orientation)      
@@ -374,13 +389,19 @@ class MovementStrategy():
         rospy.loginfo(message)   
 
     def get_current_wrist_z(self):
-        return self.kinematics_controller.get_current_wrist_z();
+        return self.kinematics_controller.get_current_wrist_z()    
+
+    def get_current_wrist(self):
+        return self.kinematics_controller.get_current_wrist()    
 
 
 class MovementStrategyDirect(MovementStrategy):
     pass
 
 class MovementStrategyWithMixedControl(MovementStrategy):
+
+    def move_to_x(self, position):
+        return self.kinematics_controller.arm_controller_move_to(position, PARK_ORIENTATION)    
 
     def move_up(self, pregrasp_position):
         return self.kinematics_controller.arm_controller_move_to(pregrasp_position, PICK_ORIENTATION)    
@@ -739,6 +760,15 @@ class ArmKinematicsControllerMoveItAndURScript(ArmKinematicsControllerMoveIt):
         rospy.loginfo("Wrist Z is " + str(z))
         return z;
 
+    def get_current_wrist(self):
+        end_effector_link = Manipulator.get_end_effector_link()
+        current_pose = Manipulator.get_current_pose(end_effector_link)
+        x = current_pose.pose.position.x
+        y = current_pose.pose.position.y
+        z = current_pose.pose.position.z
+        z -= 0.316727
+        return (x, y, z);
+
 
 def euclidean_distance(point1, point2):
     return math.sqrt((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2 + (point1[2] - point2[2])**2)         
@@ -746,6 +776,7 @@ def euclidean_distance(point1, point2):
 def quaternion_to_axis_angle(orientation):
     # TODO: Last solution on https://math.stackexchange.com/questions/291110/numerically-stable-extraction-of-axis-angle-from-unit-quaternion
     return [0.0, 3.142, 0.0]
+    #return [0.0, 3.142, 0.0]
     # TODO
     rospy.loginfo("Quaternion x y z w")
     rospy.loginfo(orientation)
@@ -793,22 +824,27 @@ class BladeControllerUr10(BladeController):
 
     def blade_cut(self):
         print("== ACTIVATING BLADE!!!")
-        #self.blade_IO(UR10_BLADE_PIN8, 0)
-        self.blade_IO(UR10_BLADE_PIN9, 1)
-        rospy.sleep(4)
+        # Start
         self.blade_IO(UR10_BLADE_PIN8, 1)
+        self.blade_IO(UR10_BLADE_PIN9, 1)
+        # Cut
+        self.blade_IO(UR10_BLADE_PIN8, 0)
+        self.blade_IO(UR10_BLADE_PIN9, 1)
+        rospy.sleep(1)
+        # Clamp
+        self.blade_IO(UR10_BLADE_PIN8, 0)
+        self.blade_IO(UR10_BLADE_PIN9, 0)
         return True
 
     def blade_release(self):    
         print("== RETRACTING BLADE!!!")
-        #self.blade_IO(UR10_BLADE_PIN8, 0)
+        # Uncut
+        self.blade_IO(UR10_BLADE_PIN8, 1)
         self.blade_IO(UR10_BLADE_PIN9, 0)
-        rospy.sleep(4)
-        self.blade_IO(UR10_BLADE_PIN8, 0)
-        #rospy.sleep(0.5)
-        #self.blade_IO(UR10_BLADE_PIN8, 1)
-        #self.blade_IO(UR10_BLADE_PIN9, 0)
-        rospy.sleep(3.0)
+        rospy.sleep(2)
+        # Unclamp
+        self.blade_IO(UR10_BLADE_PIN9, 1)
+        self.blade_IO(UR10_BLADE_PIN8, 1)
         return True
 
     def blade_IO(self, pin, voltage_level):

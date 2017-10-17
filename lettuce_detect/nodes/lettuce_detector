@@ -68,8 +68,8 @@ TfBuffer = None
 
 Latest_calibration_records = None
 USE_CALIBRATION_RECORDS = True
-ARUCO_OFFSET_X = 0.26
-ARUCO_OFFSET_Y = 0.10
+ARUCO_OFFSET_X = 0.24
+ARUCO_OFFSET_Y = 0.105
 
 ########################### ROS Stuff ############################################
 

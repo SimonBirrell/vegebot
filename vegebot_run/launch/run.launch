@@ -9,10 +9,10 @@
 -->
 	<node pkg="lettuce_test" name="test" type="test" output="screen">
 	</node>
-<!--
+
 	<node pkg="lettuce_detect" name="lettuce_detector" type="lettuce_detector">
 	</node>
--->
+
 	<node pkg="lettuce_sampler" name="lettuce_sampler" type="lettuce_sampler">
 	</node>
 
