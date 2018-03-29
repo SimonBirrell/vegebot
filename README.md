@@ -50,6 +50,10 @@ source ~/.bashrc
 - Netmask 255.255.255.0
 - Gateway 192.168.2.1
 11. Set PC Ethernet IP to 192.168.2.10
+- Check you can ping the robot
+```
+ping 192.168.2.5
+```
 
 DEMO
 ====
