@@ -34,16 +34,22 @@ git clone https://github.com/iron-ox/ur_modern_driver
 cd ur_modern_driver
 git checkout iron-kinetic-devel
 ```
-7. catkin_make
+8. catkin_make
 ```
 cd ~/catkin_ws
 catkin_make
 ```
-8. Add commands to BASH shell
+9. Add commands to BASH shell
 ```
 echo "source ~/catkin_ws/devel/setup.bash" >> ~/.bashrc
 source ~/.bashrc
 ```
+10. Set UR10 IP
+- Set Up Robot > Set up Network
+- IP 192.168.2.5
+- Netmask 255.255.255.0
+- Gateway 192.168.2.1
+11. Set PC Ethernet IP to 192.168.2.10
 
 DEMO
 ====
