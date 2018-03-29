@@ -19,7 +19,7 @@ INSTALLATION
 2. Create Catkin Workspace http://wiki.ros.org/catkin/Tutorials/create_a_workspace
 3. Install vegebot software
 ```
-cd ~/catkin_ws_src
+cd ~/catkin_ws/src
 git clone https://github.com/manacoa/vegebot
 cd ~/catkin_ws
 ```
@@ -27,6 +27,13 @@ cd ~/catkin_ws
 ```
 sudo apt-get install ros-kinetic-web-video-server ros-kinetic-ur10-moveit-config ros-kinetic-ur-gazebo ros-kinetic-rosbridge-server ros-kinetic-usb-cam ros-kinetic-tf2-web-republisher ros-kinetic-moveit ros-kinetic-universal-robot
 ``` 
+7. Install ur_modern_driver for Universal Robots
+```
+cd ~/catkin_ws/src
+git clone https://github.com/iron-ox/ur_modern_driver
+cd ur_modern_driver
+git checkout iron-kinetic-devel
+```
 7. catkin_make
 ```
 cd ~/catkin_ws
