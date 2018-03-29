@@ -18,14 +18,17 @@ INSTALLATION
 1. Install ROS Kinetic
 2. Create Catkin Workspace http://wiki.ros.org/catkin/Tutorials/create_a_workspace
 3. Install vegebot software
-    cd ~/catkin_ws_src
-    git clone https://github.com/manacoa/vegebot
-    cd ~/catkin_ws
+```
+cd ~/catkin_ws_src
+git clone https://github.com/manacoa/vegebot
+cd ~/catkin_ws
+```
 6. Install other packages
-    sudo apt-get install ros-kinetic-web-video-server
-    sudo apt-get install ros-kinetic-ur10-moveit-config
-    sudo apt-get install ros-kinetic-ur-gazebo
-    
+```
+sudo apt-get install ros-kinetic-web-video-server
+sudo apt-get install ros-kinetic-ur10-moveit-config
+sudo apt-get install ros-kinetic-ur-gazebo
+``` 
 
 DEMO
 ====
