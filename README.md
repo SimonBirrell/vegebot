@@ -28,6 +28,11 @@ cd ~/catkin_ws
 sudo apt-get install ros-kinetic-web-video-server
 sudo apt-get install ros-kinetic-ur10-moveit-config
 sudo apt-get install ros-kinetic-ur-gazebo
+sudo apt-get install ros-kinetic-rosbridge-server
+sudo apt-get install ros-kinetic-usb-cam
+sudo apt-get install ros-kinetic-tf2-web-republisher
+sudo apt-get install ros-kinetic-moveit
+sudo apt-get install ros-kinetic-universal-robot
 ``` 
 7. catkin_make
 ```
