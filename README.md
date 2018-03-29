@@ -29,6 +29,11 @@ sudo apt-get install ros-kinetic-web-video-server
 sudo apt-get install ros-kinetic-ur10-moveit-config
 sudo apt-get install ros-kinetic-ur-gazebo
 ``` 
+7. Add commands to BASH shell
+```
+echo "source ~/catkin_ws/devel/setup.bash" >> ~/.bashrc
+source ~/.bashrc
+```
 
 DEMO
 ====
