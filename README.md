@@ -12,6 +12,49 @@ lettuce_test - Various test scripts that simulate lettuces.
 
 (c) Bio-inspired Robotics Laboratory, Cambridge University. 2017. All Rights Reserved.
 
+INSTALLATION
+============
+
+1. Install ROS Kinetic
+2. Create Catkin Workspace http://wiki.ros.org/catkin/Tutorials/create_a_workspace
+3. Install vegebot software
+```
+cd ~/catkin_ws/src
+git clone https://github.com/manacoa/vegebot
+cd ~/catkin_ws
+```
+6. Install other packages
+```
+sudo apt-get install ros-kinetic-web-video-server ros-kinetic-ur10-moveit-config ros-kinetic-ur-gazebo ros-kinetic-rosbridge-server ros-kinetic-usb-cam ros-kinetic-tf2-web-republisher ros-kinetic-moveit ros-kinetic-universal-robot
+``` 
+7. Install ur_modern_driver for Universal Robots
+```
+cd ~/catkin_ws/src
+git clone https://github.com/iron-ox/ur_modern_driver
+cd ur_modern_driver
+git checkout iron-kinetic-devel
+```
+8. catkin_make
+```
+cd ~/catkin_ws
+catkin_make
+```
+9. Add commands to BASH shell
+```
+echo "source ~/catkin_ws/devel/setup.bash" >> ~/.bashrc
+source ~/.bashrc
+```
+10. Set UR10 IP
+- Set Up Robot > Set up Network
+- IP 192.168.2.5
+- Netmask 255.255.255.0
+- Gateway 192.168.2.1
+11. Set PC Ethernet IP to 192.168.2.10
+- Check you can ping the robot
+```
+ping 192.168.2.5
+```
+
 DEMO
 ====
 
