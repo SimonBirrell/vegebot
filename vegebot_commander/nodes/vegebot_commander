@@ -54,6 +54,7 @@ PREGRASP_OFFSET = [0.0, 0.0, 0.7]
 TARGET_END_EFFECTOR_OFFSET = [0.0, 0.0, END_EFFECTOR_TO_LETTUCE_Z]
 
 BASE_ORIGIN_TO_URSCRIPT_ORIGIN = [0.0, 0.0, -0.58]
+#BASE_ORIGIN_TO_URSCRIPT_ORIGIN = [0.0, 0.0, -0.21]
 
 URF10_ORIGIN = [0.0, 0.0, 0.0]
 
@@ -582,27 +583,36 @@ class ArmKinematicsControllerMoveItAndURScript(ArmKinematicsControllerMoveIt):
 
     def generate_urscript_move_command(self, position, orientation):
         pose_string = self.convertRosPoseToURScriptPose(position, orientation)
-        acceleration = 0.1
-        velocity = 0.4
+        acceleration = 0.05 # 0.1 gives protective stop
+        velocity = 0.2 # 0.4 gives protective stop
         time = 0
         blend_radius = 0
         return "movel(%s, a=%s, v=%s, t=%s, r=%s)" % (pose_string, acceleration, velocity, time, blend_radius)           
 
     def wait_for_move_to_complete(self, position, orientation):
         end_effector_link = Manipulator.get_end_effector_link()
-        time_out = 30.0
+        time_out = 15.0 # 30.0
         start_time = time.time()
+        last_cycle_time = start_time
         timeout_time = start_time + time_out
         while True:
             current_pose = Manipulator.get_current_pose(end_effector_link)
             # TODO: This won't behave as expected if the movement consists only of a rotation
             ros_position = current_pose.pose.position
-            current_position = [ros_position.x, ros_position.y, ros_position.z]
+            # 0.37 FUDGE FACTOR
+            current_position = [ros_position.x, ros_position.y, ros_position.z - 0.37]
             distance_to_goal = euclidean_distance(position, current_position)
+            t = time.time()
+            if (t - last_cycle_time > 0.5):
+                last_cycle_time = t
+                rospy.loginfo("-------------------")
+                rospy.loginfo(position)
+                rospy.loginfo(current_position)
+                rospy.loginfo(distance_to_goal)
             if (distance_to_goal < URSCRIPT_DISTANCE_TO_GOAL):
                 rospy.loginfo("Movement completed")
                 return True
-            if (time.time()> timeout_time):
+            if (t > timeout_time):
                 rospy.loginfo("Movement TIME OUT")
                 return False   
 
