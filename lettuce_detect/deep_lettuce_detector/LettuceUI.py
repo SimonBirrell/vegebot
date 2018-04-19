@@ -10,17 +10,13 @@ import datetime
 # images and results will be saved to this path
 PATH = '/home/birl/Desktop/UIdata/'
 # For localization network
-datacfg_1 = 'lettuce_cfg/lettuceABCD.data'
-cfgfile_1 = 'lettuce_cfg/yolo-lettuce.cfg'
-weightfile_1 = 'lettuce_cfg/ABCD_7000.weights'
+datacfg_1 = 'lettuce_cfg/lettuce-localization.data'
+cfgfile_1 = 'lettuce_cfg/lettuce-localization.cfg'
+weightfile_1 = 'lettuce_cfg/lettuce-localization.weights'
 # For classification network
-#datacfg_2 = 'cfg/lettuceGS.data'
-#cfgfile_2 = 'cfg/lettuce-GS.cfg'
-#weightfile_2 = 'backup_GS/lettuce-GS_160.weights'
-
-datacfg_2 = 'lettuce_cfg/lettuceGS1.data'
-cfgfile_2 = 'lettuce_cfg/lettuce-GS1.cfg'
-weightfile_2 = 'lettuce_cfg/lettuce-GS1_70.weights'
+datacfg_2 = 'lettuce_cfg/lettuce-classification.data'
+cfgfile_2 = 'lettuce_cfg/lettuce-classification.cfg'
+weightfile_2 = 'lettuce_cfg/lettuce-classification.weights'
 
 ############ SELECT CLASSES #################
 

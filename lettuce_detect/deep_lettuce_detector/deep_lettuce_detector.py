@@ -13,13 +13,13 @@ FONT = cv2.FONT_HERSHEY_SIMPLEX
 
 # Paths should remain constant if this file is saved within darknet directory
 # For localization network
-cfgfile_1 = 'lettuce_cfg/yolo-lettuce.cfg'
-datacfg_1 = 'lettuce_cfg/lettuceABCD.data'
-weightfile_1 = 'lettuce_cfg/ABCD_7000.weights'
+datacfg_1 = 'lettuce_cfg/lettuce-localization.data'
+cfgfile_1 = 'lettuce_cfg/lettuce-localization.cfg'
+weightfile_1 = 'lettuce_cfg/lettuce-localization.weights'
 # For classification network
-cfgfile_2 = 'lettuce_cfg/lettuce-GS1.cfg'
-datacfg_2 = 'lettuce_cfg/lettuceGS1.data'
-weightfile_2 = 'lettuce_cfg/lettuce-GS1_70.weights'
+datacfg_2 = 'lettuce_cfg/lettuce-classification.data'
+cfgfile_2 = 'lettuce_cfg/lettuce-classification.cfg'
+weightfile_2 = 'lettuce_cfg/lettuce-classification.weights'
 
 # Use with
 # from deep_lettuce_detector import DeepLettuceDetector
