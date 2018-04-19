@@ -1,0 +1,8 @@
+/home/birl/Desktop/my-yolo/darknet/Detection_set/00001.jpg
+/home/birl/Desktop/my-yolo/darknet/Detection_set/00002.jpg
+/home/birl/Desktop/my-yolo/darknet/Detection_set/00003.jpg
+/home/birl/Desktop/my-yolo/darknet/Detection_set/00004.jpg
+/home/birl/Desktop/my-yolo/darknet/Detection_set/00005.jpg
+/home/birl/Desktop/my-yolo/darknet/Detection_set/00006.jpg
+/home/birl/Desktop/my-yolo/darknet/Detection_set/00007.jpg
+/home/birl/Desktop/my-yolo/darknet/Detection_set/00031.jpg
