@@ -55,6 +55,21 @@ source ~/.bashrc
 ping 192.168.2.5
 ```
 
+12. Set up DeepLettuceDetctor (by Julia Cai)
+- Generate libdarknet.so. You will need CUDA and CUDNN installed (good luck!).
+````
+roscd lettuce_detect
+cd deep_lettuce_detector 
+make
+````
+- Edit vegebot/lettuce_detect/deep_lettuce_detector/darknet.py to include path to libdarknet.so
+- Download 6 files (2 x .weights, .data and .cfg) into lettuce_cfg
+- For demo to check it-s working:
+````
+python2 deep_lettuce_detector.py
+````
+This should show you a video capture window and detected bounding boxes. Press any key to exit.
+
 DEMO
 ====
 
