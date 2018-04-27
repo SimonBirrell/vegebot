@@ -1,0 +1,10 @@
+
+/home/birl/Desktop/my-yolo/darknet/classification_dataset/A00001.jpg
+/home/birl/Desktop/my-yolo/darknet/classification_dataset/A00005.jpg
+/home/birl/Desktop/my-yolo/darknet/classification_dataset/A00007.jpg
+/home/birl/Desktop/my-yolo/darknet/classification_dataset/A00022.jpg
+/home/birl/Desktop/my-yolo/darknet/classification_dataset/A00023.jpg
+/home/birl/Desktop/my-yolo/darknet/classification_dataset/A00033.jpg
+/home/birl/Desktop/my-yolo/darknet/classification_dataset/A00039.jpg
+/home/birl/Desktop/my-yolo/darknet/classification_dataset/A00037.jpg
+/home/birl/Desktop/my-yolo/darknet/classification_dataset/A00048.jpg
