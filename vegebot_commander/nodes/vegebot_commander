@@ -54,10 +54,12 @@ SCAN_ORIENTATION= [ 0.5, -0.5, -0.5, -0.5]
 SCAN_POSITION_PARAM = '/vegebot/scan_position'
 
 #END_EFFECTOR_TO_LETTUCE_Z = 0.095
-END_EFFECTOR_TO_LETTUCE_Z = 0.0
+#END_EFFECTOR_TO_LETTUCE_Z = 0.0
+END_EFFECTOR_TO_LETTUCE_Z = -0.14
 
 #PREGRASP_OFFSET = [0.0, 0.0, 0.7]
-PREGRASP_OFFSET = [0.0, 0.0, 0.3]
+#PREGRASP_OFFSET = [0.0, 0.0, 0.3]
+PREGRASP_OFFSET = [0.0, 0.0, 0.5]
 
 TARGET_END_EFFECTOR_OFFSET = [0.0, 0.0, END_EFFECTOR_TO_LETTUCE_Z]
 
@@ -716,7 +718,7 @@ class ArmKinematicsControllerMoveItAndURScript(ArmKinematicsControllerMoveIt):
     def wait_for_move_to_complete(self, position, orientation):
         end_effector_link = Manipulator.get_end_effector_link()
         #rospy.loginfo("EE Link = " + end_effector_link)
-        time_out = 30.0
+        time_out = 6.0
         start_time = time.time()
         timeout_time = start_time + time_out
         while True:
